@@ -1,0 +1,1 @@
+export { UsuarioFormModal } from './UsuarioFormModal'

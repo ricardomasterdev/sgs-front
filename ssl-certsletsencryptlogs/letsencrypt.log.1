@@ -1,0 +1,44 @@
+2026-01-09 13:21:23,814:DEBUG:certbot._internal.main:certbot version: 5.2.2
+2026-01-09 13:21:23,815:DEBUG:certbot._internal.main:Location of certbot entry point: C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Scripts\certbot
+2026-01-09 13:21:23,815:DEBUG:certbot._internal.main:Arguments: ['--manual', '--preferred-challenges', 'dns', '-d', 'api-sgs.cdxsistemas.com.br', '-d', 'api-gpvx.cdxsistemas.com.br', '-d', 'ws-sgs.cdxsistemas.com.br', '-d', 'ws-gpvx.cdxsistemas.com.br', '-d', 'sgs.cdxsistemas.com.br', '-d', 'gpvx.cdxsistemas.com.br', '--agree-tos', '--email', 'admin@cdxsistemas.com.br', '--config-dir', 'C:ssl-certsletsencrypt', '--work-dir', 'C:ssl-certsletsencryptwork', '--logs-dir', 'C:ssl-certsletsencryptlogs', '--non-interactive']
+2026-01-09 13:21:23,815:DEBUG:certbot._internal.main:Discovered plugins: PluginsRegistry(PluginEntryPoint#manual,PluginEntryPoint#null,PluginEntryPoint#standalone,PluginEntryPoint#webroot)
+2026-01-09 13:21:23,815:DEBUG:certbot.compat.misc:Failed to set console mode
+Traceback (most recent call last):
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\certbot\compat\misc.py", line 58, in prepare_virtual_console
+    h.SetConsoleMode(h.GetConsoleMode() | ENABLE_VIRTUAL_TERMINAL_PROCESSING)
+                     ^^^^^^^^^^^^^^^^^^
+pywintypes.error: (6, 'GetConsoleMode', 'The handle is invalid.')
+2026-01-09 13:21:23,972:DEBUG:certbot._internal.log:Root logging level set at 30
+2026-01-09 13:21:23,983:DEBUG:certbot._internal.plugins.selection:Requested authenticator manual and installer None
+2026-01-09 13:21:23,985:DEBUG:certbot._internal.plugins.disco:Other error:(PluginEntryPoint#manual): An authentication script must be provided with --manual-auth-hook when using the manual plugin non-interactively.
+Traceback (most recent call last):
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\certbot\_internal\plugins\disco.py", line 109, in prepare
+    self._initialized.prepare()
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\certbot\_internal\plugins\manual.py", line 110, in prepare
+    raise errors.PluginError(
+certbot.errors.PluginError: An authentication script must be provided with --manual-auth-hook when using the manual plugin non-interactively.
+2026-01-09 13:21:23,986:DEBUG:certbot._internal.plugins.selection:No candidate plugin
+2026-01-09 13:21:23,987:DEBUG:certbot._internal.log:Exiting abnormally:
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Scripts\certbot.exe\__main__.py", line 7, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\certbot\main.py", line 18, in main
+    return internal_main.main(cli_args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\certbot\_internal\main.py", line 1876, in main
+    return config.func(config, plugins)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\certbot\_internal\main.py", line 1569, in certonly
+    installer, auth = plug_sel.choose_configurator_plugins(config, plugins, "certonly")
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\certbot\_internal\plugins\selection.py", line 253, in choose_configurator_plugins
+    diagnose_configurator_problem("authenticator", req_auth, plugins)
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\certbot\_internal\plugins\selection.py", line 371, in diagnose_configurator_problem
+    raise errors.PluginSelectionError(msg)
+certbot.errors.PluginSelectionError: The manual plugin is not working; there may be problems with your existing configuration.
+The error was: PluginError('An authentication script must be provided with --manual-auth-hook when using the manual plugin non-interactively.')
+2026-01-09 13:21:23,990:ERROR:certbot._internal.log:The manual plugin is not working; there may be problems with your existing configuration.
+The error was: PluginError('An authentication script must be provided with --manual-auth-hook when using the manual plugin non-interactively.')
