@@ -11,7 +11,7 @@ import ProdutoFormModal from '../../components/produtos/ProdutoFormModal'
 
 export default function ProdutosListPage() {
   const queryClient = useQueryClient()
-  const salao = useAuthStore((state) => state.salao)
+  const { salao, filial } = useAuthStore()
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(20)
   const [search, setSearch] = useState('')
@@ -22,20 +22,21 @@ export default function ProdutosListPage() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['produtos', salao?.id, page, perPage, search, statusFilter, categoriaFilter],
+    queryKey: ['produtos', salao?.id, filial?.id, page, perPage, search, statusFilter, categoriaFilter],
     queryFn: () => produtosService.list({
       page,
       per_page: perPage,
       search: search || undefined,
       ativo: statusFilter === 'todos' ? undefined : statusFilter === 'ativo',
-      categoria: categoriaFilter || undefined
+      categoria: categoriaFilter || undefined,
+      filial_id: filial?.id
     }),
   })
 
   // Buscar todas as categorias unicas para o filtro
   const { data: allProdutos } = useQuery({
-    queryKey: ['produtos-categorias', salao?.id],
-    queryFn: () => produtosService.list({ per_page: 500 }),
+    queryKey: ['produtos-categorias', salao?.id, filial?.id],
+    queryFn: () => produtosService.list({ per_page: 500, filial_id: filial?.id }),
   })
 
   const categorias = useMemo(() => {
@@ -55,7 +56,7 @@ export default function ProdutosListPage() {
   const deleteMutation = useMutation({
     mutationFn: produtosService.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['produtos', salao?.id] })
+      queryClient.invalidateQueries({ queryKey: ['produtos', salao?.id, filial?.id] })
       toast.success('Produto desativado')
       setIsDeleteOpen(false)
     },

@@ -5,6 +5,7 @@ import { cn } from '../../utils/cn'
 import { useAuthStore } from '../../stores/authStore'
 import { useUIStore } from '../../stores/uiStore'
 import { authService } from '../../services/auth.service'
+import { saloesService } from '../../services/saloes.service'
 import {
   Bell,
   Search,
@@ -16,6 +17,7 @@ import {
   Shield,
   Building2,
   X,
+  Menu,
 } from 'lucide-react'
 import { Menu as HeadlessMenu, Transition, Popover } from '@headlessui/react'
 import toast from 'react-hot-toast'
@@ -23,8 +25,8 @@ import toast from 'react-hot-toast'
 export default function Header() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { usuario, salao, saloes, filial, filiais, logout, setSalao, setTokens, setFilial } = useAuthStore()
-  const { sidebarCollapsed } = useUIStore()
+  const { usuario, salao, saloes, filial, filiais, logout, setSalao, setTokens, setFilial, setFiliais } = useAuthStore()
+  const { sidebarCollapsed, toggleSidebarOpen } = useUIStore()
   const [switchingSalao, setSwitchingSalao] = useState(false)
   const [switchingFilial, setSwitchingFilial] = useState(false)
   const [salaoSearchQuery, setSalaoSearchQuery] = useState('')
@@ -43,8 +45,8 @@ export default function Header() {
     )
   }, [saloes, salaoSearchQuery])
 
-  // Usuario admin pode ver seletor de filiais
-  const canSeeFiliais = usuario?.is_admin_salao && filiais && filiais.length > 0
+  // Usuario admin ou super usuario com salao selecionado pode ver seletor de filiais
+  const canSeeFiliais = (usuario?.is_admin_salao || (usuario?.super_usuario && salao)) && filiais && filiais.length > 0
 
   const handleLogout = () => {
     logout()
@@ -56,6 +58,7 @@ export default function Header() {
       // Visao Geral selecionada - navega para dashboard admin
       setSalao(null)
       setFilial(null)
+      setFiliais([])
       setSalaoSearchQuery('')
       close()
       // Invalida apenas queries que dependem de salao, nao todas
@@ -83,6 +86,23 @@ export default function Header() {
         setSalao(novoSalao)
         setFilial(null)
         setTokens(response.access_token, response.refresh_token)
+
+        // Super usuario: buscar filiais do salao selecionado
+        if (usuario?.super_usuario) {
+          try {
+            const filiaisResponse = await saloesService.listFiliais({ per_page: 100 })
+            const filiaisSimples = filiaisResponse.items.map(f => ({
+              id: f.id,
+              codigo: f.codigo || '',
+              nome: f.nome,
+              is_filial: true
+            }))
+            setFiliais(filiaisSimples)
+          } catch {
+            setFiliais([])
+          }
+        }
+
         setSalaoSearchQuery('')
         close()
         await queryClient.invalidateQueries()
@@ -147,10 +167,21 @@ export default function Header() {
   return (
     <header
       className={cn(
-        'fixed top-0 right-0 h-16 bg-white/80 backdrop-blur-xl border-b border-slate-200/50 z-30 flex items-center px-6 gap-4 transition-all duration-300 shadow-sm',
-        sidebarCollapsed ? 'left-20' : 'left-64'
+        'fixed top-0 right-0 h-16 bg-white/80 backdrop-blur-xl border-b border-slate-200/50 z-30 flex items-center px-3 lg:px-6 gap-2 lg:gap-4 transition-all duration-300 shadow-sm',
+        // Mobile: ocupa toda a largura (left-0), Desktop: respeita a sidebar
+        'left-0 lg:left-64',
+        sidebarCollapsed && 'lg:left-20'
       )}
     >
+      {/* Botao hamburger - apenas mobile */}
+      <button
+        onClick={toggleSidebarOpen}
+        className="lg:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+        aria-label="Abrir menu"
+      >
+        <Menu className="w-6 h-6" />
+      </button>
+
       {/* Seletor de Salao - Apenas para super usuario */}
       {usuario?.super_usuario && saloes && saloes.length > 0 && (
         <Popover className="relative">
@@ -158,25 +189,26 @@ export default function Header() {
             <>
               <Popover.Button
                 className={cn(
-                  'flex items-center gap-3 px-3 py-2 rounded-lg border transition-all outline-none',
+                  'flex items-center gap-2 lg:gap-3 px-2 lg:px-3 py-2 rounded-lg border transition-all outline-none',
                   'bg-amber-50 border-amber-300 hover:border-amber-400 hover:bg-amber-100/50',
                   open && 'border-amber-500 ring-2 ring-amber-200'
                 )}
                 disabled={switchingSalao}
               >
-                <div className="w-7 h-7 rounded-md bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+                <div className="w-7 h-7 rounded-md bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center flex-shrink-0">
                   <Store className="w-3.5 h-3.5 text-white" />
                 </div>
-                <div className="text-left">
+                {/* Texto escondido em mobile, visivel em desktop */}
+                <div className="text-left hidden sm:block">
                   <p className="text-[10px] font-semibold text-amber-600 uppercase tracking-wide flex items-center gap-1">
                     <Shield className="w-2.5 h-2.5" />
                     Salao
                   </p>
-                  <p className="text-sm font-medium text-slate-800 truncate max-w-[130px] -mt-0.5">
+                  <p className="text-sm font-medium text-slate-800 truncate max-w-[80px] lg:max-w-[130px] -mt-0.5">
                     {salao?.nome || 'Visao Geral'}
                   </p>
                 </div>
-                <ChevronDown className={cn('w-4 h-4 text-amber-600 transition-transform', open && 'rotate-180')} />
+                <ChevronDown className={cn('w-4 h-4 text-amber-600 transition-transform flex-shrink-0', open && 'rotate-180')} />
               </Popover.Button>
 
               <Transition
@@ -190,7 +222,7 @@ export default function Header() {
                 afterEnter={() => searchInputRef.current?.focus()}
                 afterLeave={() => setSalaoSearchQuery('')}
               >
-                <Popover.Panel className="absolute left-0 mt-2 w-80 origin-top-left rounded-xl bg-white shadow-xl ring-1 ring-black/5 focus:outline-none overflow-hidden z-50">
+                <Popover.Panel className="absolute left-0 sm:left-0 mt-2 w-[calc(100vw-1.5rem)] sm:w-80 max-w-80 origin-top-left rounded-xl bg-white shadow-xl ring-1 ring-black/5 focus:outline-none overflow-hidden z-50">
                   <div className="p-2 bg-gradient-to-r from-amber-500 to-orange-500">
                     <p className="text-xs font-medium text-white/80">Super Usuario</p>
                     <p className="text-sm font-semibold text-white">Selecione o Salao</p>
@@ -295,45 +327,47 @@ export default function Header() {
       {!usuario?.super_usuario && salao && (
         <div
           className={cn(
-            'flex items-center gap-3 px-3 py-2 rounded-lg border',
+            'flex items-center gap-2 lg:gap-3 px-2 lg:px-3 py-2 rounded-lg border',
             'bg-primary-50 border-primary-300'
           )}
         >
-          <div className="w-7 h-7 rounded-md bg-gradient-to-br from-primary-400 to-pink-500 flex items-center justify-center">
+          <div className="w-7 h-7 rounded-md bg-gradient-to-br from-primary-400 to-pink-500 flex items-center justify-center flex-shrink-0">
             <Store className="w-3.5 h-3.5 text-white" />
           </div>
-          <div className="text-left">
+          {/* Texto escondido em mobile pequeno */}
+          <div className="text-left hidden sm:block">
             <p className="text-[10px] font-semibold text-primary-600 uppercase tracking-wide">Salao</p>
-            <p className="text-sm font-medium text-slate-800 truncate max-w-[150px] -mt-0.5">
+            <p className="text-sm font-medium text-slate-800 truncate max-w-[80px] lg:max-w-[150px] -mt-0.5">
               {salao.nome}
             </p>
           </div>
         </div>
       )}
 
-      {/* Seletor de Filial - para admin de salao */}
+      {/* Seletor de Filial - para admin de salao ou super usuario com salao selecionado */}
       {canSeeFiliais && (
         <Popover className="relative">
           {({ open, close }) => (
             <>
               <Popover.Button
                 className={cn(
-                  'flex items-center gap-3 px-3 py-2 rounded-lg border transition-all outline-none',
+                  'flex items-center gap-2 lg:gap-3 px-2 lg:px-3 py-2 rounded-lg border transition-all outline-none',
                   'bg-violet-50 border-violet-300 hover:border-violet-400 hover:bg-violet-100/50',
                   open && 'border-violet-500 ring-2 ring-violet-200'
                 )}
                 disabled={switchingFilial}
               >
-                <div className="w-7 h-7 rounded-md bg-gradient-to-br from-violet-400 to-purple-500 flex items-center justify-center">
+                <div className="w-7 h-7 rounded-md bg-gradient-to-br from-violet-400 to-purple-500 flex items-center justify-center flex-shrink-0">
                   <Building2 className="w-3.5 h-3.5 text-white" />
                 </div>
-                <div className="text-left">
+                {/* Texto escondido em mobile, visivel em desktop */}
+                <div className="text-left hidden sm:block">
                   <p className="text-[10px] font-semibold text-violet-600 uppercase tracking-wide">Filial</p>
-                  <p className="text-sm font-medium text-slate-800 truncate max-w-[130px] -mt-0.5">
+                  <p className="text-sm font-medium text-slate-800 truncate max-w-[80px] lg:max-w-[130px] -mt-0.5">
                     {filial?.nome || 'Matriz'}
                   </p>
                 </div>
-                <ChevronDown className={cn('w-4 h-4 text-violet-600 transition-transform', open && 'rotate-180')} />
+                <ChevronDown className={cn('w-4 h-4 text-violet-600 transition-transform flex-shrink-0', open && 'rotate-180')} />
               </Popover.Button>
 
               <Transition
@@ -345,9 +379,9 @@ export default function Header() {
                 leaveFrom="transform opacity-100 scale-100"
                 leaveTo="transform opacity-0 scale-95"
               >
-                <Popover.Panel className="absolute left-0 mt-2 w-72 origin-top-left rounded-xl bg-white shadow-xl ring-1 ring-black/5 focus:outline-none overflow-hidden z-50">
+                <Popover.Panel className="absolute left-0 sm:left-0 mt-2 w-[calc(100vw-1.5rem)] sm:w-72 max-w-72 origin-top-left rounded-xl bg-white shadow-xl ring-1 ring-black/5 focus:outline-none overflow-hidden z-50">
                   <div className="p-2 bg-gradient-to-r from-violet-500 to-purple-500">
-                    <p className="text-xs font-medium text-white/80">Administrador</p>
+                    <p className="text-xs font-medium text-white/80">{usuario?.super_usuario ? 'Super Usuario' : 'Administrador'}</p>
                     <p className="text-sm font-semibold text-white">Selecione a Filial</p>
                   </div>
 
@@ -406,20 +440,20 @@ export default function Header() {
         </Popover>
       )}
 
-      {/* Perfil do usuario */}
+      {/* Perfil do usuario - escondido em mobile pequeno */}
       {usuario?.perfil_codigo && (
         <div
           className={cn(
-            'flex items-center gap-3 px-3 py-2 rounded-lg border',
+            'hidden md:flex items-center gap-2 lg:gap-3 px-2 lg:px-3 py-2 rounded-lg border',
             'bg-slate-50 border-slate-300'
           )}
         >
-          <div className="w-7 h-7 rounded-md bg-gradient-to-br from-slate-400 to-slate-500 flex items-center justify-center">
+          <div className="w-7 h-7 rounded-md bg-gradient-to-br from-slate-400 to-slate-500 flex items-center justify-center flex-shrink-0">
             <User className="w-3.5 h-3.5 text-white" />
           </div>
           <div className="text-left">
             <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Perfil</p>
-            <p className="text-sm font-medium text-slate-800 truncate max-w-[90px] -mt-0.5">
+            <p className="text-sm font-medium text-slate-800 truncate max-w-[70px] lg:max-w-[90px] -mt-0.5">
               {usuario.perfil_codigo}
             </p>
           </div>
@@ -429,26 +463,26 @@ export default function Header() {
       {/* Spacer */}
       <div className="flex-1" />
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1 lg:gap-3">
         {/* Notificacoes - esconder se super usuario sem salao */}
         {!isSuperUserNoSalao && (
-          <button className="relative p-2.5 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors">
+          <button className="relative p-2 lg:p-2.5 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors">
             <Bell className="w-5 h-5" />
-            <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-white" />
+            <span className="absolute top-1 lg:top-1.5 right-1 lg:right-1.5 w-2 lg:w-2.5 h-2 lg:h-2.5 bg-red-500 rounded-full ring-2 ring-white" />
           </button>
         )}
 
         {/* Menu do usuario */}
         <HeadlessMenu as="div" className="relative">
-          <HeadlessMenu.Button className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-slate-100 transition-colors">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-400 to-pink-500 flex items-center justify-center text-white font-medium">
+          <HeadlessMenu.Button className="flex items-center gap-1 lg:gap-2 p-1 lg:p-1.5 rounded-xl hover:bg-slate-100 transition-colors">
+            <div className="w-8 h-8 lg:w-9 lg:h-9 rounded-full bg-gradient-to-br from-primary-400 to-pink-500 flex items-center justify-center text-white font-medium text-sm lg:text-base">
               {usuario?.foto_url ? (
                 <img src={usuario.foto_url} alt={usuario.nome} className="w-full h-full rounded-full object-cover" />
               ) : (
                 usuario?.nome?.charAt(0) || 'U'
               )}
             </div>
-            <ChevronDown className="w-4 h-4 text-slate-400" />
+            <ChevronDown className="w-4 h-4 text-slate-400 hidden sm:block" />
           </HeadlessMenu.Button>
 
           <Transition
@@ -460,7 +494,7 @@ export default function Header() {
             leaveFrom="transform opacity-100 scale-100"
             leaveTo="transform opacity-0 scale-95"
           >
-            <HeadlessMenu.Items className="absolute right-0 mt-2 w-56 origin-top-right rounded-xl bg-white shadow-xl ring-1 ring-black/5 focus:outline-none overflow-hidden">
+            <HeadlessMenu.Items className="absolute right-0 mt-2 w-[calc(100vw-1.5rem)] sm:w-56 max-w-56 origin-top-right rounded-xl bg-white shadow-xl ring-1 ring-black/5 focus:outline-none overflow-hidden z-50">
               <div className={cn(
                 'p-3',
                 usuario?.super_usuario

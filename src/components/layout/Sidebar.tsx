@@ -24,6 +24,9 @@ import {
   BarChart3,
   Cog,
   DollarSign,
+  X,
+  UserCircle,
+  FileText,
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { useUIStore } from '../../stores/uiStore'
@@ -37,6 +40,12 @@ interface MenuItem {
   superOnly?: boolean
   children?: MenuItem[]
 }
+
+// Menu para colaboradores
+const colaboradorMenuItems: MenuItem[] = [
+  { icon: Receipt, label: 'Minhas Comandas', path: '/minhas-comandas' },
+  { icon: FileText, label: 'Relatorio', path: '/relatorio-comandas' },
+]
 
 // Menu para usuarios normais (admin de salao) - estrutura com submenus retráteis
 const menuItems: MenuItem[] = [
@@ -110,7 +119,7 @@ export default function Sidebar() {
   const navigate = useNavigate()
   const location = useLocation()
   const { usuario, salao, logout } = useAuthStore()
-  const { sidebarCollapsed, toggleSidebarCollapsed } = useUIStore()
+  const { sidebarCollapsed, toggleSidebarCollapsed, sidebarOpen, setSidebarOpen } = useUIStore()
   const [expandedMenus, setExpandedMenus] = useState<string[]>([])
 
   const handleLogout = () => {
@@ -120,6 +129,7 @@ export default function Sidebar() {
 
   const isAdmin = usuario?.is_admin_salao || usuario?.super_usuario
   const isSuper = usuario?.super_usuario
+  const isColaborador = usuario?.is_colaborador
 
   // Super usuario sem salao selecionado - modo admin apenas
   const isSuperUserNoSalao = isSuper && !salao
@@ -155,14 +165,17 @@ export default function Sidebar() {
     })
   }
 
+  // Colaborador: ve apenas Minhas Comandas
   // Super usuario sem salao: ve apenas opcoes de administracao (Dashboard + Administracao)
   // Super usuario com salao: ve menu completo do salao + secao Administracao
   // Usuario normal: ve menu completo do salao
-  const allMenuItems = isSuper
-    ? salao
-      ? [...filterMenuItems(menuItems), ...adminMenuItemsWithSalao]
-      : adminMenuItems
-    : filterMenuItems(menuItems)
+  const allMenuItems = isColaborador
+    ? colaboradorMenuItems
+    : isSuper
+      ? salao
+        ? [...filterMenuItems(menuItems), ...adminMenuItemsWithSalao]
+        : adminMenuItems
+      : filterMenuItems(menuItems)
 
   // Expande automaticamente o menu quando um filho esta ativo
   useEffect(() => {
@@ -172,6 +185,13 @@ export default function Sidebar() {
       }
     })
   }, [location.pathname])
+
+  // Fecha a sidebar mobile quando navegar
+  const handleNavClick = () => {
+    if (window.innerWidth < 1024) {
+      setSidebarOpen(false)
+    }
+  }
 
   // Verifica se o item e do menu de administracao
   const isAdminItem = (item: MenuItem): boolean => {
@@ -202,54 +222,51 @@ export default function Sidebar() {
                 : useAmberStyle
                   ? 'text-amber-600 hover:bg-amber-50'
                   : 'text-slate-600 hover:bg-primary-50 hover:text-primary-700',
-              sidebarCollapsed && 'justify-center px-2'
+              sidebarCollapsed && 'lg:justify-center lg:px-2'
             )}
             title={sidebarCollapsed ? item.label : undefined}
           >
             <item.icon className="w-5 h-5 flex-shrink-0" />
-            {!sidebarCollapsed && (
-              <>
-                <span className="flex-1 text-left">{item.label}</span>
-                <ChevronDown
-                  className={cn(
-                    'w-4 h-4 transition-transform duration-200',
-                    isExpanded && 'rotate-180'
-                  )}
-                />
-              </>
-            )}
+            <span className={cn('flex-1 text-left', sidebarCollapsed && 'lg:hidden')}>{item.label}</span>
+            <ChevronDown
+              className={cn(
+                'w-4 h-4 transition-transform duration-200',
+                isExpanded && 'rotate-180',
+                sidebarCollapsed && 'lg:hidden'
+              )}
+            />
           </button>
 
           {/* Submenu */}
-          {!sidebarCollapsed && (
-            <ul
-              className={cn(
-                'overflow-hidden transition-all duration-200 ml-2 border-l-2 border-slate-200',
-                isExpanded ? 'max-h-[500px] opacity-100 mt-1' : 'max-h-0 opacity-0'
-              )}
-            >
-              {item.children!.map(child => (
-                <li key={child.path}>
-                  <NavLink
-                    to={child.path}
-                    className={({ isActive: childActive }) =>
-                      cn(
-                        'flex items-center gap-3 px-3 py-2 pl-8 rounded-r-xl text-sm font-medium transition-all duration-200',
-                        childActive
-                          ? useAmberStyle
-                            ? 'bg-amber-100 text-amber-700 border-l-2 border-amber-500 -ml-[2px]'
-                            : 'bg-primary-100 text-primary-700 border-l-2 border-primary-500 -ml-[2px]'
-                          : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'
-                      )
-                    }
-                  >
-                    <child.icon className="w-4 h-4 flex-shrink-0" />
-                    <span>{child.label}</span>
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
-          )}
+          <ul
+            className={cn(
+              'overflow-hidden transition-all duration-200 ml-2 border-l-2 border-slate-200',
+              isExpanded ? 'max-h-[500px] opacity-100 mt-1' : 'max-h-0 opacity-0',
+              sidebarCollapsed && 'lg:hidden'
+            )}
+          >
+            {item.children!.map(child => (
+              <li key={child.path}>
+                <NavLink
+                  to={child.path}
+                  onClick={handleNavClick}
+                  className={({ isActive: childActive }) =>
+                    cn(
+                      'flex items-center gap-3 px-3 py-2 pl-8 rounded-r-xl text-sm font-medium transition-all duration-200',
+                      childActive
+                        ? useAmberStyle
+                          ? 'bg-amber-100 text-amber-700 border-l-2 border-amber-500 -ml-[2px]'
+                          : 'bg-primary-100 text-primary-700 border-l-2 border-primary-500 -ml-[2px]'
+                        : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'
+                    )
+                  }
+                >
+                  <child.icon className="w-4 h-4 flex-shrink-0" />
+                  <span>{child.label}</span>
+                </NavLink>
+              </li>
+            ))}
+          </ul>
         </li>
       )
     }
@@ -258,6 +275,7 @@ export default function Sidebar() {
       <li key={item.path}>
         <NavLink
           to={item.path}
+          onClick={handleNavClick}
           className={({ isActive: navActive }) =>
             cn(
               'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
@@ -268,13 +286,13 @@ export default function Sidebar() {
                 : useAmberStyle
                   ? 'text-amber-600 hover:bg-amber-50'
                   : 'text-slate-600 hover:bg-primary-50 hover:text-primary-700',
-              sidebarCollapsed && 'justify-center px-2'
+              sidebarCollapsed && 'lg:justify-center lg:px-2'
             )
           }
           title={sidebarCollapsed ? item.label : undefined}
         >
           <item.icon className="w-5 h-5 flex-shrink-0" />
-          {!sidebarCollapsed && <span>{item.label}</span>}
+          <span className={cn(sidebarCollapsed && 'lg:hidden')}>{item.label}</span>
         </NavLink>
       </li>
     )
@@ -284,59 +302,80 @@ export default function Sidebar() {
     <aside
       className={cn(
         'fixed left-0 top-0 h-screen bg-white border-r border-slate-200 flex flex-col transition-all duration-300 z-40 shadow-sm',
-        sidebarCollapsed ? 'w-20' : 'w-64'
+        // Desktop
+        'lg:translate-x-0',
+        sidebarCollapsed ? 'lg:w-20' : 'lg:w-64',
+        // Mobile - sempre largura fixa, controlado por translate
+        'w-72',
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       )}
     >
       {/* Logo - cor muda baseado no tipo de usuario */}
       <div className={cn(
         'h-16 flex items-center justify-between px-4 border-b border-slate-100',
-        isSuper
-          ? 'bg-gradient-to-r from-amber-500 to-orange-500'
-          : 'bg-gradient-to-r from-primary-500 to-pink-500'
+        isColaborador
+          ? 'bg-gradient-to-r from-teal-500 to-emerald-500'
+          : isSuper
+            ? 'bg-gradient-to-r from-amber-500 to-orange-500'
+            : 'bg-gradient-to-r from-primary-500 to-pink-500'
       )}>
-        {!sidebarCollapsed && (
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur">
-              {isSuper ? (
-                <Shield className="w-5 h-5 text-white" />
-              ) : (
-                <Sparkles className="w-5 h-5 text-white" />
-              )}
-            </div>
-            <div>
-              <h1 className="font-bold text-white text-lg">SGSx</h1>
-              <p className="text-xs text-white/80 -mt-0.5">
-                {isSuper ? 'Super Admin' : 'Gestao de Salao'}
-              </p>
-            </div>
-          </div>
-        )}
-        {sidebarCollapsed && (
-          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center mx-auto backdrop-blur">
-            {isSuper ? (
+        <div className={cn('flex items-center gap-3', sidebarCollapsed && 'lg:hidden')}>
+          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur">
+            {isColaborador ? (
+              <UserCircle className="w-5 h-5 text-white" />
+            ) : isSuper ? (
               <Shield className="w-5 h-5 text-white" />
             ) : (
               <Sparkles className="w-5 h-5 text-white" />
             )}
           </div>
-        )}
+          <div>
+            <h1 className="font-bold text-white text-lg">SGSx</h1>
+            <p className="text-xs text-white/80 -mt-0.5">
+              {isColaborador ? 'Colaborador' : isSuper ? 'Super Admin' : 'Gestao de Salao'}
+            </p>
+          </div>
+        </div>
+
+        {/* Logo collapsed - desktop only */}
+        <div className={cn('hidden', sidebarCollapsed && 'lg:flex lg:mx-auto')}>
+          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur">
+            {isColaborador ? (
+              <UserCircle className="w-5 h-5 text-white" />
+            ) : isSuper ? (
+              <Shield className="w-5 h-5 text-white" />
+            ) : (
+              <Sparkles className="w-5 h-5 text-white" />
+            )}
+          </div>
+        </div>
+
+        {/* Botao collapse - desktop */}
         <button
           onClick={toggleSidebarCollapsed}
           className={cn(
-            'p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors',
+            'hidden lg:block p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors',
             sidebarCollapsed && 'absolute -right-3 top-6 bg-white shadow-lg border border-slate-200 text-slate-600 hover:text-slate-800'
           )}
         >
           {sidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+        </button>
+
+        {/* Botao fechar - mobile */}
+        <button
+          onClick={() => setSidebarOpen(false)}
+          className="lg:hidden p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors"
+        >
+          <X className="w-5 h-5" />
         </button>
       </div>
 
       {/* Usuario Info */}
       <div className={cn(
         'px-3 py-4 border-b border-slate-100',
-        sidebarCollapsed ? 'flex justify-center' : ''
+        sidebarCollapsed ? 'lg:flex lg:justify-center' : ''
       )}>
-        {sidebarCollapsed ? (
+        <div className={cn('hidden', sidebarCollapsed && 'lg:block')}>
           <div className="relative group">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-pink-500 flex items-center justify-center text-white font-medium">
               {usuario?.nome?.charAt(0) || 'U'}
@@ -350,25 +389,25 @@ export default function Sidebar() {
               <span className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-slate-800" />
             </div>
           </div>
-        ) : (
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-pink-500 flex items-center justify-center text-white font-medium">
-              {usuario?.foto_url ? (
-                <img src={usuario.foto_url} alt={usuario.nome} className="w-full h-full rounded-full object-cover" />
-              ) : (
-                usuario?.nome?.charAt(0) || 'U'
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-slate-900 truncate">
-                {usuario?.nome}
-              </p>
-              <p className="text-xs text-slate-500 truncate">
-                {usuario?.perfil_codigo || 'Usuario'}
-              </p>
-            </div>
+        </div>
+
+        <div className={cn('flex items-center gap-3', sidebarCollapsed && 'lg:hidden')}>
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-pink-500 flex items-center justify-center text-white font-medium">
+            {usuario?.foto_url ? (
+              <img src={usuario.foto_url} alt={usuario.nome} className="w-full h-full rounded-full object-cover" />
+            ) : (
+              usuario?.nome?.charAt(0) || 'U'
+            )}
           </div>
-        )}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-slate-900 truncate">
+              {usuario?.nome}
+            </p>
+            <p className="text-xs text-slate-500 truncate">
+              {usuario?.perfil_codigo || 'Usuario'}
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Menu */}
@@ -380,22 +419,23 @@ export default function Sidebar() {
 
       {/* Footer */}
       <div className="border-t border-slate-100 p-3 bg-slate-50/50 space-y-2">
-        {/* Configuracoes - apenas para admin */}
-        {isAdmin && !isSuperUserNoSalao && (
+        {/* Configuracoes - apenas para admin (nao colaborador) */}
+        {isAdmin && !isSuperUserNoSalao && !isColaborador && (
           <NavLink
             to="/configuracoes"
+            onClick={handleNavClick}
             className={({ isActive }) =>
               cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
                 isActive
                   ? 'bg-gradient-to-r from-primary-500 to-pink-500 text-white shadow-md shadow-primary-500/25'
                   : 'text-slate-600 hover:bg-primary-50 hover:text-primary-700',
-                sidebarCollapsed && 'justify-center px-2'
+                sidebarCollapsed && 'lg:justify-center lg:px-2'
               )
             }
           >
             <Settings className="w-5 h-5" />
-            {!sidebarCollapsed && <span>Configuracoes</span>}
+            <span className={cn(sidebarCollapsed && 'lg:hidden')}>Configuracoes</span>
           </NavLink>
         )}
 
@@ -404,12 +444,12 @@ export default function Sidebar() {
           className={cn(
             'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 w-full',
             'text-red-500 hover:bg-red-50 hover:text-red-600',
-            sidebarCollapsed && 'justify-center px-2'
+            sidebarCollapsed && 'lg:justify-center lg:px-2'
           )}
           title="Sair"
         >
           <LogOut className="w-5 h-5" />
-          {!sidebarCollapsed && <span>Sair</span>}
+          <span className={cn(sidebarCollapsed && 'lg:hidden')}>Sair</span>
         </button>
       </div>
     </aside>

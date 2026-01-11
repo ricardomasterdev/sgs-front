@@ -5,7 +5,7 @@ import { Eye, Receipt, XCircle, Zap, FileText, Play, Printer, Pencil } from 'luc
 import { comandasService } from '../../services/comandas.service'
 import { Button, DataTable, Pagination, ConfirmModal } from '../../components/ui'
 import { useAuthStore } from '../../stores/authStore'
-import { formatters, masks } from '../../utils/masks'
+import { formatters } from '../../utils/masks'
 import toast from 'react-hot-toast'
 import type { Comanda, StatusComanda } from '../../types'
 import { cn } from '../../utils/cn'
@@ -32,7 +32,7 @@ const statusLabels: Record<StatusComanda, string> = {
 export default function ComandasListPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const salao = useAuthStore((state) => state.salao)
+  const { salao, filial } = useAuthStore()
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(20)
   const [statusFilter, setStatusFilter] = useState<StatusComanda | ''>('')
@@ -48,14 +48,14 @@ export default function ComandasListPage() {
   const [comandaParaEditar, setComandaParaEditar] = useState<Comanda | null>(null)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['comandas', salao?.id, page, perPage, statusFilter],
-    queryFn: () => comandasService.list({ page, per_page: perPage, status_filter: statusFilter || undefined }),
+    queryKey: ['comandas', salao?.id, filial?.id, page, perPage, statusFilter],
+    queryFn: () => comandasService.list({ page, per_page: perPage, status_filter: statusFilter || undefined, filial_id: filial?.id }),
   })
 
   const cancelMutation = useMutation({
     mutationFn: comandasService.cancelar,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['comandas', salao?.id] })
+      queryClient.invalidateQueries({ queryKey: ['comandas', salao?.id, filial?.id] })
       toast.success('Comanda cancelada')
       setIsCancelOpen(false)
     },
@@ -74,7 +74,7 @@ export default function ComandasListPage() {
           <div>
             <p className="font-bold text-primary-600">{c.nome_cliente || c.cliente?.nome || 'Cliente nao informado'}</p>
             <p className="text-xs text-slate-400">
-              #{c.numero} • {c.data_abertura ? masks.dateTime(c.data_abertura) : '-'}
+              #{c.numero} • {c.data_abertura ? formatters.dateTimeShortBR(c.data_abertura) : '-'}
             </p>
           </div>
         </div>
@@ -96,21 +96,21 @@ export default function ComandasListPage() {
         <div className="flex items-center gap-1">
           <button
             onClick={(e) => { e.stopPropagation(); navigate(`/comandas/${c.id}`); }}
-            className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-primary-600"
+            className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 hover:text-primary-600"
             title="Ver detalhes"
           >
             <Eye size={16} />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); setComandaParaEditar(c); setIsEditarOpen(true); }}
-            className="p-2 rounded-lg hover:bg-amber-50 text-slate-500 hover:text-amber-600"
+            className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-amber-50 text-slate-500 hover:text-amber-600"
             title="Editar"
           >
             <Pencil size={16} />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); setComandaParaImprimir(c); setIsPrintOpen(true); }}
-            className="p-2 rounded-lg hover:bg-blue-50 text-slate-500 hover:text-blue-600"
+            className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-blue-50 text-slate-500 hover:text-blue-600"
             title="Imprimir cupom"
           >
             <Printer size={16} />
@@ -119,14 +119,14 @@ export default function ComandasListPage() {
             <>
               <button
                 onClick={(e) => { e.stopPropagation(); setComandaParaContinuar(c); setIsContinuarOpen(true); }}
-                className="p-2 rounded-lg hover:bg-green-50 text-slate-500 hover:text-green-600"
+                className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-green-50 text-slate-500 hover:text-green-600"
                 title="Continuar / Fechar"
               >
                 <Play size={16} />
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); setSelectedComanda(c); setIsCancelOpen(true); }}
-                className="p-2 rounded-lg hover:bg-red-50 text-slate-500 hover:text-red-600"
+                className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-red-50 text-slate-500 hover:text-red-600"
                 title="Cancelar"
               >
                 <XCircle size={16} />
@@ -140,16 +140,19 @@ export default function ComandasListPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div><h1 className="page-title">Comandas</h1><p className="text-slate-500">Gerencie os atendimentos</p></div>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => setIsNovaNormalOpen(true)}><FileText size={18} />Comanda Normal</Button>
-          <Button onClick={() => setIsNovaRapidaOpen(true)}><Zap size={18} />Comanda Rapida</Button>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="page-title text-xl sm:text-2xl">Comandas</h1>
+          <p className="text-slate-500 text-sm sm:text-base">Gerencie os atendimentos</p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Button variant="secondary" onClick={() => setIsNovaNormalOpen(true)} className="w-full sm:w-auto"><FileText size={18} />Comanda Normal</Button>
+          <Button onClick={() => setIsNovaRapidaOpen(true)} className="w-full sm:w-auto"><Zap size={18} />Comanda Rapida</Button>
         </div>
       </div>
       <div className="card">
-        <div className="flex items-center gap-4 mb-6">
-          <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as StatusComanda | ''); setPage(1); }} className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white">
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as StatusComanda | ''); setPage(1); }} className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm">
             <option value="">Todos os status</option>
             <option value="aberta">Aberta</option>
             <option value="em_atendimento">Em Atendimento</option>

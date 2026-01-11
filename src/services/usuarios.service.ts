@@ -7,6 +7,7 @@ interface ListParams {
   search?: string
   status?: string
   status_filter?: StatusUsuario
+  filial_id?: string
 }
 
 interface CreateUsuario {
@@ -18,6 +19,8 @@ interface CreateUsuario {
   perfil_id?: string
   salao_id?: string
   super_usuario?: boolean
+  colaborador_id?: string
+  is_colaborador?: boolean
 }
 
 export const usuariosService = {

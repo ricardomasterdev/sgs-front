@@ -110,4 +110,75 @@ export const formatters = {
   number: (value: number) => {
     return new Intl.NumberFormat('pt-BR').format(value)
   },
+
+  // Formata data/hora no fuso horario do Brasil
+  dateTimeBR: (value: string | Date) => {
+    if (!value) return ''
+    const date = typeof value === 'string' ? new Date(value) : value
+    return date.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+  },
+
+  // Formata apenas data no fuso horario do Brasil
+  dateBR: (value: string | Date) => {
+    if (!value) return ''
+    const date = typeof value === 'string' ? new Date(value) : value
+    return date.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+  },
+
+  // Formata apenas hora no fuso horario do Brasil
+  timeBR: (value: string | Date) => {
+    if (!value) return ''
+    const date = typeof value === 'string' ? new Date(value) : value
+    return date.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })
+  },
+
+  // Formata data e hora curta no fuso horario do Brasil
+  dateTimeShortBR: (value: string | Date) => {
+    if (!value) return ''
+    const date = typeof value === 'string' ? new Date(value) : value
+    const dataStr = date.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+    const horaStr = date.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })
+    return `${dataStr} ${horaStr}`
+  },
+}
+
+// Funcao para obter data/hora atual no fuso horario do Brasil em formato ISO
+export const getDataHoraBrasilISO = (dataBase?: string) => {
+  // Se dataBase for informada, usa ela como base (YYYY-MM-DD)
+  // Caso contrario, usa a data atual
+  const agora = new Date()
+
+  // Obter componentes de hora no Brasil usando Intl.DateTimeFormat
+  const formatter = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  })
+
+  const parts = formatter.formatToParts(agora)
+  const hora = parts.find(p => p.type === 'hour')?.value || '00'
+  const minuto = parts.find(p => p.type === 'minute')?.value || '00'
+  const segundo = parts.find(p => p.type === 'second')?.value || '00'
+  const horaBrasil = `${hora}:${minuto}:${segundo}`
+
+  if (dataBase) {
+    // dataBase no formato YYYY-MM-DD
+    return `${dataBase}T${horaBrasil}`
+  }
+
+  // Data atual no Brasil
+  const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  })
+  const dateParts = dateFormatter.formatToParts(agora)
+  const dia = dateParts.find(p => p.type === 'day')?.value || '01'
+  const mes = dateParts.find(p => p.type === 'month')?.value || '01'
+  const ano = dateParts.find(p => p.type === 'year')?.value || '2024'
+
+  return `${ano}-${mes}-${dia}T${horaBrasil}`
 }

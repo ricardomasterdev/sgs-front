@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Modal, Badge } from '../../components/ui'
-import { formatters, masks } from '../../utils/masks'
+import { formatters } from '../../utils/masks'
 import {
   Receipt,
   User,
@@ -63,7 +63,7 @@ export default function ComandaDetalheModal({ isOpen, onClose, comandaId }: Prop
                   Comanda #{comanda.numero}
                 </h3>
                 <p className="text-sm text-slate-500">
-                  {comanda.data_abertura && masks.dateTime(comanda.data_abertura)}
+                  {comanda.data_abertura && formatters.dateTimeShortBR(comanda.data_abertura)}
                 </p>
               </div>
             </div>
@@ -208,7 +208,7 @@ export default function ComandaDetalheModal({ isOpen, onClose, comandaId }: Prop
                       <p className="font-medium text-slate-700">{pag.tipo_recebimento_nome}</p>
                       {pag.data_pagamento && (
                         <p className="text-xs text-slate-500">
-                          {masks.dateTime(pag.data_pagamento)}
+                          {formatters.dateTimeShortBR(pag.data_pagamento)}
                         </p>
                       )}
                     </div>

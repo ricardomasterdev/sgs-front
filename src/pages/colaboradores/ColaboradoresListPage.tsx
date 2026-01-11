@@ -12,7 +12,7 @@ import ColaboradorServicosModal from '../../components/colaboradores/Colaborador
 
 export default function ColaboradoresListPage() {
   const queryClient = useQueryClient()
-  const salao = useAuthStore((state) => state.salao)
+  const { salao, filial } = useAuthStore()
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(20)
   const [search, setSearch] = useState('')
@@ -24,18 +24,19 @@ export default function ColaboradoresListPage() {
   const [isServicosOpen, setIsServicosOpen] = useState(false)
 
   const { data: cargosData } = useQuery({
-    queryKey: ['cargos-filter', salao?.id],
-    queryFn: () => cargosService.list({ per_page: 100, ativo: true }),
+    queryKey: ['cargos-filter', salao?.id, filial?.id],
+    queryFn: () => cargosService.list({ per_page: 100, ativo: true, filial_id: filial?.id }),
   })
 
   const { data, isLoading } = useQuery({
-    queryKey: ['colaboradores', salao?.id, page, perPage, search, statusFilter, cargoFilter],
+    queryKey: ['colaboradores', salao?.id, filial?.id, page, perPage, search, statusFilter, cargoFilter],
     queryFn: () => colaboradoresService.list({
       page,
       per_page: perPage,
       search: search || undefined,
       ativo: statusFilter === 'todos' ? undefined : statusFilter === 'ativo',
-      cargo_id: cargoFilter || undefined
+      cargo_id: cargoFilter || undefined,
+      filial_id: filial?.id
     }),
   })
 
@@ -50,7 +51,7 @@ export default function ColaboradoresListPage() {
   const deleteMutation = useMutation({
     mutationFn: colaboradoresService.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['colaboradores', salao?.id] })
+      queryClient.invalidateQueries({ queryKey: ['colaboradores', salao?.id, filial?.id] })
       toast.success('Colaborador desativado')
       setIsDeleteOpen(false)
     },
@@ -97,26 +98,26 @@ export default function ColaboradoresListPage() {
     {
       key: 'actions',
       header: '',
-      width: '100px',
+      width: '140px',
       render: (col: Colaborador) => (
         <div className="flex items-center gap-1">
           <button
             onClick={(e) => { e.stopPropagation(); setSelectedColaborador(col); setIsServicosOpen(true); }}
-            className="p-2 rounded-lg hover:bg-purple-50 text-slate-500 hover:text-purple-600"
+            className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-purple-50 text-slate-500 hover:text-purple-600"
             title="Gerenciar Servicos"
           >
             <Scissors size={16} />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); setSelectedColaborador(col); setIsFormOpen(true); }}
-            className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-primary-600"
+            className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 hover:text-primary-600"
             title="Editar"
           >
             <Edit size={16} />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); setSelectedColaborador(col); setIsDeleteOpen(true); }}
-            className="p-2 rounded-lg hover:bg-red-50 text-slate-500 hover:text-red-600"
+            className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-red-50 text-slate-500 hover:text-red-600"
             title="Desativar"
           >
             <Trash2 size={16} />
@@ -128,21 +129,21 @@ export default function ColaboradoresListPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="page-title">Colaboradores</h1>
-          <p className="text-slate-500">Gerencie os profissionais do salão</p>
+          <h1 className="page-title text-xl sm:text-2xl">Colaboradores</h1>
+          <p className="text-slate-500 text-sm sm:text-base">Gerencie os profissionais do salão</p>
         </div>
-        <Button onClick={() => { setSelectedColaborador(null); setIsFormOpen(true); }}>
+        <Button onClick={() => { setSelectedColaborador(null); setIsFormOpen(true); }} className="w-full sm:w-auto">
           <Plus size={18} />
           Novo Colaborador
         </Button>
       </div>
 
       <div className="card">
-        <div className="flex flex-wrap items-center gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
           {/* Busca */}
-          <div className="relative flex-1 min-w-[200px] max-w-md">
+          <div className="relative flex-1 min-w-0 sm:max-w-md">
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
@@ -154,12 +155,12 @@ export default function ColaboradoresListPage() {
           </div>
 
           {/* Filtros */}
-          <div className="flex items-center gap-2">
-            <Filter size={16} className="text-slate-400" />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <Filter size={16} className="text-slate-400 hidden sm:block" />
             <select
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value as typeof statusFilter); setPage(1); }}
-              className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
+              className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
             >
               <option value="todos">Todos os status</option>
               <option value="ativo">Ativos</option>
@@ -168,7 +169,7 @@ export default function ColaboradoresListPage() {
             <select
               value={cargoFilter}
               onChange={(e) => { setCargoFilter(e.target.value); setPage(1); }}
-              className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
+              className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
             >
               <option value="">Todos os cargos</option>
               {cargosData?.items?.map(cargo => (
@@ -181,7 +182,7 @@ export default function ColaboradoresListPage() {
           {hasFilters && (
             <button
               onClick={clearFilters}
-              className="flex items-center gap-1 px-3 py-2 text-sm text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              className="flex items-center justify-center gap-1 px-3 py-2 min-h-[44px] text-sm text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
             >
               <X size={16} /> Limpar filtros
             </button>

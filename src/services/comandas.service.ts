@@ -6,12 +6,15 @@ interface ListParams {
   per_page?: number
   status_filter?: StatusComanda
   cliente_id?: string
+  colaborador_id?: string
   data_inicio?: string
   data_fim?: string
+  filial_id?: string
 }
 
 interface CreateComanda {
   cliente_id?: string
+  colaborador_id?: string
   nome_cliente?: string
   data_abertura?: string
   status?: StatusComanda

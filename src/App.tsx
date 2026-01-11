@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './stores/authStore'
 
 // Layouts
@@ -25,12 +25,14 @@ import AdminUsuariosListPage from './pages/admin/AdminUsuariosListPage'
 import AdminWhatsAppListPage from './pages/admin/AdminWhatsAppListPage'
 import AniversariantesListPage from './pages/aniversariantes/AniversariantesListPage'
 import ComissoesRelatorioPage from './pages/relatorios/ComissoesRelatorioPage'
+import MinhasComandasPage from './pages/colaborador/MinhasComandasPage'
+import RelatoriosComandasPage from './pages/colaborador/RelatoriosComandasPage'
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading } = useAuthStore()
+  const { isAuthenticated, isLoading, _hasHydrated } = useAuthStore()
 
-  if (isLoading) {
+  if (!_hasHydrated || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-500 border-t-transparent"></div>
@@ -47,18 +49,59 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 // Public Route Component
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated } = useAuthStore()
+  const { isAuthenticated, usuario, _hasHydrated } = useAuthStore()
+
+  if (!_hasHydrated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-500 border-t-transparent"></div>
+      </div>
+    )
+  }
 
   if (isAuthenticated) {
+    // Colaborador vai para minhas-comandas, outros para dashboard
+    const redirectTo = usuario?.is_colaborador ? '/minhas-comandas' : '/dashboard'
+    return <Navigate to={redirectTo} replace />
+  }
+
+  return <>{children}</>
+}
+
+// Admin Route Component - bloqueia acesso de colaboradores
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { usuario } = useAuthStore()
+
+  // Colaborador nao pode acessar rotas admin - redireciona para minhas-comandas
+  if (usuario?.is_colaborador) {
+    return <Navigate to="/minhas-comandas" replace />
+  }
+
+  return <>{children}</>
+}
+
+// Colaborador Route Component - apenas colaboradores podem acessar
+const ColaboradorRoute = ({ children }: { children: React.ReactNode }) => {
+  const { usuario } = useAuthStore()
+
+  // Apenas colaboradores podem acessar
+  if (!usuario?.is_colaborador) {
     return <Navigate to="/dashboard" replace />
   }
 
   return <>{children}</>
 }
 
+// Index Redirect - redireciona baseado no tipo de usuario
+const IndexRedirect = () => {
+  const { usuario } = useAuthStore()
+  const redirectTo = usuario?.is_colaborador ? '/minhas-comandas' : '/dashboard'
+  return <Navigate to={redirectTo} replace />
+}
+
 function App() {
   return (
-    <BrowserRouter basename="/sgs">
+    <HashRouter>
       <Routes>
         {/* Auth Routes */}
         <Route
@@ -81,33 +124,40 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="dashboard" element={<DashboardPage />} />
-          <Route path="clientes" element={<ClientesListPage />} />
-          <Route path="aniversariantes" element={<AniversariantesListPage />} />
-          <Route path="relatorios/comissoes" element={<ComissoesRelatorioPage />} />
-          <Route path="colaboradores" element={<ColaboradoresListPage />} />
-          <Route path="cargos" element={<CargosListPage />} />
-          <Route path="servicos" element={<ServicosListPage />} />
-          <Route path="produtos" element={<ProdutosListPage />} />
-          <Route path="tipos-recebimento" element={<TiposRecebimentoListPage />} />
-          <Route path="comandas" element={<ComandasListPage />} />
-          <Route path="comandas/:id" element={<ComandaPage />} />
-          <Route path="usuarios" element={<UsuariosListPage />} />
-          <Route path="filiais" element={<FiliaisListPage />} />
-          <Route path="whatsapp" element={<WhatsAppListPage />} />
+          {/* Index - redireciona baseado no tipo de usuario */}
+          <Route index element={<IndexRedirect />} />
+
+          {/* Rotas exclusivas para colaboradores */}
+          <Route path="minhas-comandas" element={<ColaboradorRoute><MinhasComandasPage /></ColaboradorRoute>} />
+          <Route path="relatorio-comandas" element={<ColaboradorRoute><RelatoriosComandasPage /></ColaboradorRoute>} />
+
+          {/* Rotas bloqueadas para colaboradores */}
+          <Route path="dashboard" element={<AdminRoute><DashboardPage /></AdminRoute>} />
+          <Route path="clientes" element={<AdminRoute><ClientesListPage /></AdminRoute>} />
+          <Route path="aniversariantes" element={<AdminRoute><AniversariantesListPage /></AdminRoute>} />
+          <Route path="relatorios/comissoes" element={<AdminRoute><ComissoesRelatorioPage /></AdminRoute>} />
+          <Route path="colaboradores" element={<AdminRoute><ColaboradoresListPage /></AdminRoute>} />
+          <Route path="cargos" element={<AdminRoute><CargosListPage /></AdminRoute>} />
+          <Route path="servicos" element={<AdminRoute><ServicosListPage /></AdminRoute>} />
+          <Route path="produtos" element={<AdminRoute><ProdutosListPage /></AdminRoute>} />
+          <Route path="tipos-recebimento" element={<AdminRoute><TiposRecebimentoListPage /></AdminRoute>} />
+          <Route path="comandas" element={<AdminRoute><ComandasListPage /></AdminRoute>} />
+          <Route path="comandas/:id" element={<AdminRoute><ComandaPage /></AdminRoute>} />
+          <Route path="usuarios" element={<AdminRoute><UsuariosListPage /></AdminRoute>} />
+          <Route path="filiais" element={<AdminRoute><FiliaisListPage /></AdminRoute>} />
+          <Route path="whatsapp" element={<AdminRoute><WhatsAppListPage /></AdminRoute>} />
 
           {/* Rotas Admin (Super Usuario) - Paginas separadas sem dependencia de salao */}
-          <Route path="admin/dashboard" element={<AdminDashboardPage />} />
-          <Route path="admin/saloes" element={<SaloesListPage />} />
-          <Route path="admin/usuarios" element={<AdminUsuariosListPage />} />
-          <Route path="admin/whatsapp" element={<AdminWhatsAppListPage />} />
+          <Route path="admin/dashboard" element={<AdminRoute><AdminDashboardPage /></AdminRoute>} />
+          <Route path="admin/saloes" element={<AdminRoute><SaloesListPage /></AdminRoute>} />
+          <Route path="admin/usuarios" element={<AdminRoute><AdminUsuariosListPage /></AdminRoute>} />
+          <Route path="admin/whatsapp" element={<AdminRoute><AdminWhatsAppListPage /></AdminRoute>} />
         </Route>
 
-        {/* 404 */}
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        {/* 404 - redireciona baseado no tipo de usuario */}
+        <Route path="*" element={<IndexRedirect />} />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   )
 }
 

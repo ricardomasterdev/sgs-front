@@ -94,19 +94,19 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   }
 
   .card {
-    @apply bg-white rounded-2xl shadow-soft p-6;
+    @apply bg-white rounded-xl sm:rounded-2xl shadow-soft p-4 sm:p-6;
   }
 
   .card-hover {
-    @apply bg-white rounded-2xl shadow-soft p-6 hover:shadow-lg transition-shadow duration-200;
+    @apply bg-white rounded-xl sm:rounded-2xl shadow-soft p-4 sm:p-6 hover:shadow-lg transition-shadow duration-200;
   }
 
   .page-title {
-    @apply text-2xl font-bold text-slate-900;
+    @apply text-xl sm:text-2xl font-bold text-slate-900;
   }
 
   .section-title {
-    @apply text-lg font-semibold text-slate-800;
+    @apply text-base sm:text-lg font-semibold text-slate-800;
   }
 
   .text-muted {
@@ -138,11 +138,17 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   }
 
   .table-header {
-    @apply px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider;
+    @apply px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider;
   }
 
   .table-cell {
-    @apply px-6 py-4 whitespace-nowrap text-sm text-slate-700;
+    @apply px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-sm text-slate-700;
+  }
+
+  /* Botoes de acao na tabela - tamanho minimo para touch em mobile */
+  .table-cell button,
+  .table-cell a {
+    @apply min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 inline-flex items-center justify-center;
   }
 }
 
@@ -173,4 +179,31 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 
 .bg-gradient-admin {
   background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+/* Mobile responsiveness */
+@media (max-width: 640px) {
+  /* Prevent horizontal overflow on mobile */
+  body {
+    overflow-x: hidden;
+  }
+
+  /* Better touch targets for buttons */
+  button,
+  a[role="button"],
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger {
+    min-height: 44px;
+  }
+
+  /* Adjust input fields for mobile */
+  .input-field {
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+
+  /* Modal scrollbar styling for mobile */
+  .modal-content::-webkit-scrollbar {
+    width: 4px;
+  }
 }

@@ -11,7 +11,7 @@ import ServicoFormModal from '../../components/servicos/ServicoFormModal'
 
 export default function ServicosListPage() {
   const queryClient = useQueryClient()
-  const salao = useAuthStore((state) => state.salao)
+  const { salao, filial } = useAuthStore()
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(20)
   const [search, setSearch] = useState('')
@@ -22,20 +22,21 @@ export default function ServicosListPage() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['servicos', salao?.id, page, perPage, search, statusFilter, categoriaFilter],
+    queryKey: ['servicos', salao?.id, filial?.id, page, perPage, search, statusFilter, categoriaFilter],
     queryFn: () => servicosService.list({
       page,
       per_page: perPage,
       search: search || undefined,
       ativo: statusFilter === 'todos' ? undefined : statusFilter === 'ativo',
-      categoria: categoriaFilter || undefined
+      categoria: categoriaFilter || undefined,
+      filial_id: filial?.id
     }),
   })
 
   // Buscar todas as categorias unicas para o filtro
   const { data: allServicos } = useQuery({
-    queryKey: ['servicos-categorias', salao?.id],
-    queryFn: () => servicosService.list({ per_page: 500 }),
+    queryKey: ['servicos-categorias', salao?.id, filial?.id],
+    queryFn: () => servicosService.list({ per_page: 500, filial_id: filial?.id }),
   })
 
   const categorias = useMemo(() => {
@@ -55,7 +56,7 @@ export default function ServicosListPage() {
   const deleteMutation = useMutation({
     mutationFn: servicosService.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['servicos', salao?.id] })
+      queryClient.invalidateQueries({ queryKey: ['servicos', salao?.id, filial?.id] })
       toast.success('Serviço desativado')
       setIsDeleteOpen(false)
     },

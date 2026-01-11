@@ -82,7 +82,7 @@ const MESES = [
 ]
 
 export default function AniversariantesListPage() {
-  const salao = useAuthStore((state) => state.salao)
+  const { salao, filial } = useAuthStore()
   const hoje = new Date()
 
   // Estado do filtro de datas
@@ -140,14 +140,14 @@ export default function AniversariantesListPage() {
 
   // Query para buscar aniversariantes
   const { data: aniversariantes = [], isLoading } = useQuery({
-    queryKey: ['aniversariantes', salao?.id, filtroTipo, datas.inicio, datas.fim, mesSelecionado],
+    queryKey: ['aniversariantes', salao?.id, filial?.id, filtroTipo, datas.inicio, datas.fim, mesSelecionado],
     queryFn: async () => {
       if (filtroTipo === 'hoje') {
-        return aniversariantesService.listarHoje()
+        return aniversariantesService.listarHoje(filial?.id)
       } else if (filtroTipo === 'mes') {
-        return aniversariantesService.listarPorMes(mesSelecionado)
+        return aniversariantesService.listarPorMes(mesSelecionado, filial?.id)
       } else {
-        return aniversariantesService.listarPorPeriodo(datas.inicio, datas.fim)
+        return aniversariantesService.listarPorPeriodo(datas.inicio, datas.fim, filial?.id)
       }
     },
   })

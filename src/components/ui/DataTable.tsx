@@ -44,7 +44,8 @@ export default function DataTable<T extends Record<string, any>>({
   if (loading) {
     return (
       <div className="overflow-hidden rounded-xl border border-slate-200">
-        <table className="min-w-full divide-y divide-slate-200">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-slate-200" style={{ minWidth: '640px' }}>
           <thead className="bg-slate-50">
             <tr>
               {columns.map((col) => (
@@ -66,6 +67,7 @@ export default function DataTable<T extends Record<string, any>>({
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     )
   }
@@ -73,17 +75,19 @@ export default function DataTable<T extends Record<string, any>>({
   if (data.length === 0) {
     return (
       <div className="overflow-hidden rounded-xl border border-slate-200">
-        <table className="min-w-full divide-y divide-slate-200">
-          <thead className="bg-slate-50">
-            <tr>
-              {columns.map((col) => (
-                <th key={col.key} className="table-header" style={{ width: col.width }}>
-                  {col.header}
-                </th>
-              ))}
-            </tr>
-          </thead>
-        </table>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-slate-200" style={{ minWidth: '640px' }}>
+            <thead className="bg-slate-50">
+              <tr>
+                {columns.map((col) => (
+                  <th key={col.key} className="table-header" style={{ width: col.width }}>
+                    {col.header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+          </table>
+        </div>
         <div className="py-12 text-center text-slate-500">{emptyMessage}</div>
       </div>
     )
@@ -92,7 +96,7 @@ export default function DataTable<T extends Record<string, any>>({
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200">
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-slate-200">
+        <table className="min-w-full divide-y divide-slate-200" style={{ minWidth: '640px' }}>
           <thead className="bg-slate-50">
             <tr>
               {columns.map((col) => (

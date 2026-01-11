@@ -5,6 +5,7 @@ interface ListParams {
   page?: number
   per_page?: number
   ativo?: boolean
+  filial_id?: string
 }
 
 export const tiposRecebimentoService = {

@@ -33,6 +33,9 @@ export interface UsuarioAuth {
   super_usuario: boolean
   is_admin_salao: boolean
   pertence_filial: boolean
+  is_colaborador: boolean
+  colaborador_id?: string
+  colaborador_nome?: string
   saloes?: SalaoSimples[]
   filiais?: SalaoSimples[]
   perfil_codigo?: string

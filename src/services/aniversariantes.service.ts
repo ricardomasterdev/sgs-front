@@ -13,17 +13,22 @@ export const aniversariantesService = {
   /**
    * Lista aniversariantes de hoje
    */
-  async listarHoje(): Promise<Aniversariante[]> {
-    const { data } = await api.get<Aniversariante[]>('/clientes/aniversariantes/hoje')
+  async listarHoje(filialId?: string): Promise<Aniversariante[]> {
+    const { data } = await api.get<Aniversariante[]>('/clientes/aniversariantes/hoje', {
+      params: filialId ? { filial_id: filialId } : undefined,
+    })
     return data
   },
 
   /**
    * Lista aniversariantes do mes
    */
-  async listarPorMes(mes?: number): Promise<Aniversariante[]> {
+  async listarPorMes(mes?: number, filialId?: string): Promise<Aniversariante[]> {
+    const params: Record<string, unknown> = {}
+    if (mes) params.mes = mes
+    if (filialId) params.filial_id = filialId
     const { data } = await api.get<Aniversariante[]>('/clientes/aniversariantes/mes', {
-      params: mes ? { mes } : undefined,
+      params: Object.keys(params).length > 0 ? params : undefined,
     })
     return data
   },
@@ -31,13 +36,13 @@ export const aniversariantesService = {
   /**
    * Lista aniversariantes em um periodo
    */
-  async listarPorPeriodo(dataInicio: string, dataFim: string): Promise<Aniversariante[]> {
-    const { data } = await api.get<Aniversariante[]>('/clientes/aniversariantes/periodo', {
-      params: {
-        data_inicio: dataInicio,
-        data_fim: dataFim,
-      },
-    })
+  async listarPorPeriodo(dataInicio: string, dataFim: string, filialId?: string): Promise<Aniversariante[]> {
+    const params: Record<string, unknown> = {
+      data_inicio: dataInicio,
+      data_fim: dataFim,
+    }
+    if (filialId) params.filial_id = filialId
+    const { data } = await api.get<Aniversariante[]>('/clientes/aniversariantes/periodo', { params })
     return data
   },
 }

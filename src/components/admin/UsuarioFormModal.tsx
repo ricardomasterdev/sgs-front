@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { User, Mail, Lock, Smartphone, Store, X, Shield, Search, Save } from 'lucide-react'
+import { User, Mail, Lock, Smartphone, Store, X, Shield, Search, Save, UserCog } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 import { Modal, Button, Input } from '../ui'
 import { usuariosService } from '../../services/usuarios.service'
 import { saloesService } from '../../services/saloes.service'
+import { colaboradoresService } from '../../services/colaboradores.service'
 import { useAuthStore } from '../../stores/authStore'
-import type { Usuario, Salao } from '../../types'
+import type { Usuario, Salao, Colaborador } from '../../types'
 
 interface UsuarioFormData {
   nome: string
@@ -46,8 +47,11 @@ export function UsuarioFormModal({ isOpen, onClose, usuario }: UsuarioFormModalP
 
   const [selectedSalao, setSelectedSalao] = useState<Salao | null>(null)
   const [selectedPerfil, setSelectedPerfil] = useState<PerfilItem | null>(null)
+  const [selectedColaborador, setSelectedColaborador] = useState<Colaborador | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [colaboradorSearch, setColaboradorSearch] = useState('')
   const [showSalaoList, setShowSalaoList] = useState(false)
+  const [showColaboradorList, setShowColaboradorList] = useState(false)
   const [telefoneValue, setTelefoneValue] = useState('')
 
   const {
@@ -92,6 +96,23 @@ export function UsuarioFormModal({ isOpen, onClose, usuario }: UsuarioFormModalP
     enabled: isOpen,
   })
 
+  // Buscar colaboradores do salao selecionado
+  const { data: colaboradoresData } = useQuery({
+    queryKey: ['colaboradores-vinculo', selectedSalao?.id],
+    queryFn: () => colaboradoresService.list({ per_page: 100, ativo: true }),
+    enabled: isOpen && !!selectedSalao && selectedPerfil?.codigo === 'colaborador',
+  })
+
+  const colaboradores = colaboradoresData?.items || []
+
+  // Filtrar colaboradores pela busca
+  const filteredColaboradores = colaboradores.filter((c) =>
+    c.nome.toLowerCase().includes(colaboradorSearch.toLowerCase())
+  )
+
+  // Verifica se o perfil selecionado e Colaborador
+  const isPerfilColaborador = selectedPerfil?.codigo === 'colaborador'
+
   // Filtrar saloes pela busca
   const filteredSaloes = saloes.filter((s) =>
     s.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -124,9 +145,12 @@ export function UsuarioFormModal({ isOpen, onClose, usuario }: UsuarioFormModalP
       setTelefoneValue('')
       setSelectedSalao(null)
       setSelectedPerfil(null)
+      setSelectedColaborador(null)
     }
     setSearchQuery('')
+    setColaboradorSearch('')
     setShowSalaoList(false)
+    setShowColaboradorList(false)
   }, [usuario, reset, isOpen])
 
   // Atualizar selectedSalao quando saloes carregarem (apenas para edicao)
@@ -157,8 +181,18 @@ export function UsuarioFormModal({ isOpen, onClose, usuario }: UsuarioFormModalP
   useEffect(() => {
     if (!isEditing) {
       setSelectedPerfil(null)
+      setSelectedColaborador(null)
     }
   }, [selectedSalao, isEditing])
+
+  // Limpar colaborador quando perfil mudar
+  useEffect(() => {
+    if (!isPerfilColaborador) {
+      setSelectedColaborador(null)
+      setColaboradorSearch('')
+      setShowColaboradorList(false)
+    }
+  }, [selectedPerfil, isPerfilColaborador])
 
   // Mutation para criar
   const createMutation = useMutation({
@@ -195,8 +229,11 @@ export function UsuarioFormModal({ isOpen, onClose, usuario }: UsuarioFormModalP
     setTelefoneValue('')
     setSelectedSalao(null)
     setSelectedPerfil(null)
+    setSelectedColaborador(null)
     setSearchQuery('')
+    setColaboradorSearch('')
     setShowSalaoList(false)
+    setShowColaboradorList(false)
     onClose()
   }
 
@@ -204,6 +241,12 @@ export function UsuarioFormModal({ isOpen, onClose, usuario }: UsuarioFormModalP
     // Validar salao se nao for super usuario
     if (!data.superUsuario && !selectedSalao) {
       toast.error('Selecione um salao para o usuario')
+      return
+    }
+
+    // Validar colaborador se perfil for Colaborador
+    if (isPerfilColaborador && !selectedColaborador) {
+      toast.error('Selecione um colaborador para vincular')
       return
     }
 
@@ -229,6 +272,8 @@ export function UsuarioFormModal({ isOpen, onClose, usuario }: UsuarioFormModalP
         super_usuario: data.superUsuario,
         salao_id: data.superUsuario ? null : selectedSalao?.id,
         perfil_id: data.superUsuario ? null : selectedPerfil?.id,
+        colaborador_id: isPerfilColaborador ? selectedColaborador?.id : null,
+        is_colaborador: isPerfilColaborador,
       }
 
       if (data.senha) {
@@ -246,6 +291,8 @@ export function UsuarioFormModal({ isOpen, onClose, usuario }: UsuarioFormModalP
         super_usuario: data.superUsuario,
         salao_id: data.superUsuario ? undefined : selectedSalao?.id,
         perfil_id: data.superUsuario ? undefined : selectedPerfil?.id,
+        colaborador_id: isPerfilColaborador ? selectedColaborador?.id : undefined,
+        is_colaborador: isPerfilColaborador,
       }
 
       if (telefoneLimpo) payload.telefone = telefoneLimpo
@@ -384,6 +431,85 @@ export function UsuarioFormModal({ isOpen, onClose, usuario }: UsuarioFormModalP
             </select>
             <p className="mt-2 text-xs text-slate-500">
               O perfil define as permissoes do usuario no sistema
+            </p>
+          </div>
+        )}
+
+        {/* Colaborador (se perfil for Colaborador) */}
+        {!superUsuario && selectedSalao && isPerfilColaborador && (
+          <div>
+            <div className="flex items-center gap-2 text-slate-700 font-medium mb-3">
+              <UserCog className="w-4 h-4" />
+              <span>Vincular a Colaborador *</span>
+            </div>
+
+            {selectedColaborador ? (
+              <div className="flex items-center justify-between p-3 bg-teal-50 border border-teal-200 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-teal-500 flex items-center justify-center text-white font-bold">
+                    {selectedColaborador.nome.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="font-medium text-slate-900">{selectedColaborador.nome}</p>
+                    <p className="text-sm text-slate-500">{selectedColaborador.cargo?.nome || 'Colaborador'}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedColaborador(null)}
+                  className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="relative">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Buscar colaborador..."
+                    value={colaboradorSearch}
+                    onChange={(e) => setColaboradorSearch(e.target.value)}
+                    onFocus={() => setShowColaboradorList(true)}
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                  />
+                </div>
+
+                {showColaboradorList && (
+                  <div className="absolute z-10 w-full mt-1 bg-white rounded-xl shadow-lg border border-slate-200 max-h-48 overflow-y-auto">
+                    {filteredColaboradores.length === 0 ? (
+                      <div className="p-3 text-center text-slate-500 text-sm">
+                        {colaboradores.length === 0 ? 'Carregando colaboradores...' : 'Nenhum colaborador encontrado'}
+                      </div>
+                    ) : (
+                      filteredColaboradores.map((colab) => (
+                        <button
+                          key={colab.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedColaborador(colab)
+                            setShowColaboradorList(false)
+                            setColaboradorSearch('')
+                          }}
+                          className="w-full flex items-center gap-3 p-3 hover:bg-teal-50 transition-colors text-left"
+                        >
+                          <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center text-teal-600 font-medium text-sm">
+                            {colab.nome.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="font-medium text-slate-900 text-sm">{colab.nome}</p>
+                            <p className="text-xs text-slate-500">{colab.cargo?.nome || 'Colaborador'}</p>
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            <p className="mt-2 text-xs text-slate-500">
+              O usuario sera vinculado a este colaborador para registrar comandas
             </p>
           </div>
         )}

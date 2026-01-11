@@ -53,7 +53,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
 
 export default function UsuariosListPage() {
   const queryClient = useQueryClient()
-  const { salao, usuario } = useAuthStore()
+  const { salao, filial, usuario } = useAuthStore()
   const isSuper = usuario?.super_usuario
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(20)
@@ -65,12 +65,13 @@ export default function UsuariosListPage() {
   const [confirmModalOpen, setConfirmModalOpen] = useState(false)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['usuarios', salao?.id, page, perPage, search, statusFilter],
+    queryKey: ['usuarios', salao?.id, filial?.id, page, perPage, search, statusFilter],
     queryFn: () => usuariosService.list({
       page,
       per_page: perPage,
       search: search || undefined,
-      status: statusFilter === 'todos' ? undefined : statusFilter
+      status: statusFilter === 'todos' ? undefined : statusFilter,
+      filial_id: filial?.id
     }),
     enabled: !!salao || !!isSuper,
   })
@@ -89,7 +90,7 @@ export default function UsuariosListPage() {
       return usuariosService.update(usuario.id, { status: novoStatus } as any)
     },
     onSuccess: (_, usuario) => {
-      queryClient.invalidateQueries({ queryKey: ['usuarios', salao?.id] })
+      queryClient.invalidateQueries({ queryKey: ['usuarios', salao?.id, filial?.id] })
       toast.success(
         usuario.status === 'ativo'
           ? `Usuario "${usuario.nome}" desativado`

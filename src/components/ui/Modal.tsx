@@ -13,11 +13,11 @@ interface ModalProps {
 }
 
 const sizes = {
-  sm: 'max-w-md',
-  md: 'max-w-lg',
-  lg: 'max-w-2xl',
-  xl: 'max-w-4xl',
-  full: 'max-w-6xl',
+  sm: 'max-w-full sm:max-w-md',
+  md: 'max-w-full sm:max-w-lg',
+  lg: 'max-w-full sm:max-w-2xl',
+  xl: 'max-w-full sm:max-w-4xl',
+  full: 'max-w-full sm:max-w-6xl',
 }
 
 export default function Modal({
@@ -44,7 +44,7 @@ export default function Modal({
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
+          <div className="flex min-h-full items-center justify-center p-2 sm:p-4">
             <Transition.Child
               as={Fragment}
               enter="ease-out duration-300"
@@ -56,28 +56,30 @@ export default function Modal({
             >
               <Dialog.Panel
                 className={cn(
-                  'w-full transform overflow-hidden rounded-2xl bg-white shadow-xl transition-all',
+                  'w-full transform rounded-xl sm:rounded-2xl bg-white shadow-xl transition-all',
+                  'max-h-[calc(100vh-1rem)] sm:max-h-[calc(100vh-2rem)] overflow-y-auto',
+                  'mx-1 sm:mx-0',
                   sizes[size]
                 )}
               >
                 {/* Header */}
                 {(title || description) && (
-                  <div className="flex items-start justify-between p-6 border-b border-slate-100">
-                    <div>
+                  <div className="flex items-start justify-between p-4 sm:p-6 border-b border-slate-100 sticky top-0 bg-white z-10">
+                    <div className="flex-1 min-w-0 pr-2">
                       {title && (
-                        <Dialog.Title className="text-lg font-semibold text-slate-900">
+                        <Dialog.Title className="text-base sm:text-lg font-semibold text-slate-900 truncate">
                           {title}
                         </Dialog.Title>
                       )}
                       {description && (
-                        <Dialog.Description className="mt-1 text-sm text-slate-500">
+                        <Dialog.Description className="mt-1 text-xs sm:text-sm text-slate-500">
                           {description}
                         </Dialog.Description>
                       )}
                     </div>
                     <button
                       onClick={onClose}
-                      className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                      className="flex-shrink-0 p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
                     >
                       <X size={20} />
                     </button>
@@ -85,7 +87,7 @@ export default function Modal({
                 )}
 
                 {/* Content */}
-                <div className="p-6">{children}</div>
+                <div className="p-4 sm:p-6">{children}</div>
               </Dialog.Panel>
             </Transition.Child>
           </div>

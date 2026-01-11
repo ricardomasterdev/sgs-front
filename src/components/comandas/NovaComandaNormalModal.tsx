@@ -9,7 +9,7 @@ import { produtosService } from '../../services/produtos.service'
 import { tiposRecebimentoService } from '../../services/tipos-recebimento.service'
 import { Modal, Button } from '../../components/ui'
 import { useAuthStore } from '../../stores/authStore'
-import { formatters, masks } from '../../utils/masks'
+import { formatters, masks, getDataHoraBrasilISO } from '../../utils/masks'
 import toast from 'react-hot-toast'
 import { Search, User, Scissors, Package, CreditCard, Plus, Minus, X, Check, UserPlus, Phone, Calendar, ClipboardList } from 'lucide-react'
 import type { Servico, Produto, StatusComanda, Comanda } from '../../types'
@@ -233,7 +233,8 @@ export default function NovaComandaNormalModal({ isOpen, onClose, comanda, modoE
         const servicosFiltrados = servicosData.items.filter(s => servicosIds.includes(s.id))
         setServicosDoColaborador(servicosFiltrados)
       } else {
-        setServicosDoColaborador(servicosData.items)
+        // Colaborador sem servicos vinculados - nao mostra nenhum servico
+        setServicosDoColaborador([])
       }
       setSelectedServicoId('')
       setServicoPreco('')
@@ -318,14 +319,20 @@ export default function NovaComandaNormalModal({ isOpen, onClose, comanda, modoE
     onError: () => toast.error('Erro ao cadastrar cliente'),
   })
 
+  // Funcao para obter data/hora de abertura no fuso horario do Brasil
+  const getDataAberturaISO = () => {
+    const dataISO = masks.dateToISO(dataComanda)
+    if (!dataISO) return undefined
+    return getDataHoraBrasilISO(dataISO)
+  }
+
   // Mutation para criar comanda
   const createMutation = useMutation({
     mutationFn: async () => {
-      const dataISO = masks.dateToISO(dataComanda)
       const novaComanda = await comandasService.create({
         cliente_id: clienteId || undefined,
         nome_cliente: clienteNome || undefined,
-        data_abertura: dataISO ? `${dataISO}T12:00:00` : undefined,
+        data_abertura: getDataAberturaISO(),
         status: statusComanda,
         observacoes: observacoes || undefined,
         itens: itensComanda.map(item => ({
@@ -649,13 +656,11 @@ export default function NovaComandaNormalModal({ isOpen, onClose, comanda, modoE
     mutationFn: async () => {
       if (!comandaAtual) throw new Error('Comanda nao encontrada')
 
-      const dataISO = masks.dateToISO(dataComanda)
-
       // Atualizar dados basicos da comanda
       await comandasService.update(comandaAtual.id, {
         cliente_id: clienteId || undefined,
         nome_cliente: clienteNome || undefined,
-        data_abertura: dataISO ? `${dataISO}T12:00:00` : undefined,
+        data_abertura: getDataAberturaISO(),
         status: statusComanda,
         observacoes: observacoes || undefined,
       })
@@ -1281,8 +1286,9 @@ export default function NovaComandaNormalModal({ isOpen, onClose, comanda, modoE
 
         {/* Form Servico expandido */}
         {abaAtiva === 'servico' && (
-          <div className="bg-purple-50 p-4 rounded-xl space-y-3 border border-purple-200">
-            <div className="flex items-end gap-2">
+          <div className="bg-purple-50 p-3 sm:p-4 rounded-xl space-y-3 border border-purple-200">
+            {/* Linha 1: Profissional e Servico */}
+            <div className="flex flex-col sm:flex-row gap-2">
               {/* Profissional com busca */}
               <div className="flex-1 min-w-0 relative">
                 <label className="block text-xs text-purple-700 mb-1">Profissional</label>
@@ -1290,7 +1296,7 @@ export default function NovaComandaNormalModal({ isOpen, onClose, comanda, modoE
                   <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-purple-400" />
                   <input
                     type="text"
-                    placeholder="Buscar..."
+                    placeholder="Buscar profissional..."
                     value={colaboradorSearch}
                     onChange={(e) => {
                       setColaboradorSearch(e.target.value)
@@ -1305,20 +1311,20 @@ export default function NovaComandaNormalModal({ isOpen, onClose, comanda, modoE
                     }}
                     onFocus={() => setShowColaboradorDropdown(true)}
                     onBlur={() => setTimeout(() => setShowColaboradorDropdown(false), 200)}
-                    className="w-full pl-7 pr-2 py-2 rounded-lg border border-purple-200 bg-white text-sm focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
+                    className="w-full pl-7 pr-8 py-2.5 rounded-lg border border-purple-200 bg-white text-sm focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
                   />
                   {selectedColaboradorId && <Check size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-green-500" />}
                 </div>
                 {showColaboradorDropdown && colaboradoresFiltrados.length > 0 && (
-                  <div className="absolute z-20 w-full mt-1 bg-white border border-purple-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                  <div className="absolute z-20 w-full mt-1 bg-white border border-purple-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                     {colaboradoresFiltrados.map(colab => (
                       <button
                         key={colab.id}
                         type="button"
                         onClick={() => handleSelectColaborador(colab.id, colab.nome)}
-                        className="w-full px-3 py-2 text-left hover:bg-purple-50 text-sm flex items-center justify-between"
+                        className="w-full px-3 py-3 text-left hover:bg-purple-50 text-sm flex items-center justify-between border-b border-purple-100 last:border-0"
                       >
-                        <span>{colab.nome}</span>
+                        <span className="font-medium">{colab.nome}</span>
                         {colab.cargo?.nome && <span className="text-xs text-slate-400">{colab.cargo.nome}</span>}
                       </button>
                     ))}
@@ -1333,7 +1339,7 @@ export default function NovaComandaNormalModal({ isOpen, onClose, comanda, modoE
                   <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-purple-400" />
                   <input
                     type="text"
-                    placeholder="Buscar..."
+                    placeholder="Buscar servico..."
                     value={servicoSearch}
                     onChange={(e) => {
                       setServicoSearch(e.target.value)
@@ -1347,29 +1353,38 @@ export default function NovaComandaNormalModal({ isOpen, onClose, comanda, modoE
                     onFocus={() => setShowServicoDropdown(true)}
                     onBlur={() => setTimeout(() => setShowServicoDropdown(false), 200)}
                     disabled={!selectedColaboradorId}
-                    className="w-full pl-7 pr-2 py-2 rounded-lg border border-purple-200 bg-white text-sm focus:border-purple-400 focus:ring-2 focus:ring-purple-100 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                    className="w-full pl-7 pr-8 py-2.5 rounded-lg border border-purple-200 bg-white text-sm focus:border-purple-400 focus:ring-2 focus:ring-purple-100 disabled:bg-slate-100 disabled:cursor-not-allowed"
                   />
                   {selectedServicoId && <Check size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-green-500" />}
                 </div>
-                {showServicoDropdown && selectedColaboradorId && servicosFiltrados.length > 0 && (
-                  <div className="absolute z-20 w-full mt-1 bg-white border border-purple-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
-                    {servicosFiltrados.map(servico => (
-                      <button
-                        key={servico.id}
-                        type="button"
-                        onClick={() => handleSelectServico(servico)}
-                        className="w-full px-3 py-2 text-left hover:bg-purple-50 text-sm"
-                      >
-                        <span className="font-medium text-green-600">R$ {Number(servico.preco).toFixed(2)}</span>
-                        <span className="mx-2 text-slate-400">-</span>
-                        <span>{servico.nome}</span>
-                      </button>
-                    ))}
+                {showServicoDropdown && selectedColaboradorId && (
+                  <div className="absolute z-20 w-full mt-1 bg-white border border-purple-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {servicosFiltrados.length > 0 ? (
+                      servicosFiltrados.map(servico => (
+                        <button
+                          key={servico.id}
+                          type="button"
+                          onClick={() => handleSelectServico(servico)}
+                          className="w-full px-3 py-3 text-left hover:bg-purple-50 text-sm border-b border-purple-100 last:border-0"
+                        >
+                          <span className="font-medium text-green-600">R$ {Number(servico.preco).toFixed(2)}</span>
+                          <span className="mx-2 text-slate-400">-</span>
+                          <span>{servico.nome}</span>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-3 py-3 text-sm text-amber-600 bg-amber-50">
+                        Este profissional nao possui servicos vinculados
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
+            </div>
 
-              <div className="w-16">
+            {/* Linha 2: Qtd, Preco, % e Botao */}
+            <div className="flex items-end gap-2">
+              <div className="flex-1 sm:w-20 sm:flex-none">
                 <label className="block text-xs text-purple-700 mb-1">Qtd</label>
                 <input
                   type="number"
@@ -1377,10 +1392,10 @@ export default function NovaComandaNormalModal({ isOpen, onClose, comanda, modoE
                   value={servicoQuantidade}
                   onChange={(e) => setServicoQuantidade(e.target.value)}
                   disabled={!selectedServicoId}
-                  className="w-full px-2 py-2 rounded-lg border border-purple-200 bg-white text-sm text-center focus:border-purple-400 focus:ring-2 focus:ring-purple-100 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                  className="w-full px-2 py-2.5 rounded-lg border border-purple-200 bg-white text-sm text-center focus:border-purple-400 focus:ring-2 focus:ring-purple-100 disabled:bg-slate-100 disabled:cursor-not-allowed"
                 />
               </div>
-              <div className="w-24">
+              <div className="flex-1 sm:w-28 sm:flex-none">
                 <label className="block text-xs text-purple-700 mb-1">Preco</label>
                 <input
                   type="number"
@@ -1389,10 +1404,10 @@ export default function NovaComandaNormalModal({ isOpen, onClose, comanda, modoE
                   onChange={(e) => setServicoPreco(e.target.value)}
                   placeholder="R$"
                   disabled={!selectedServicoId}
-                  className="w-full px-2 py-2 rounded-lg border border-purple-200 bg-white text-sm focus:border-purple-400 focus:ring-2 focus:ring-purple-100 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                  className="w-full px-2 py-2.5 rounded-lg border border-purple-200 bg-white text-sm focus:border-purple-400 focus:ring-2 focus:ring-purple-100 disabled:bg-slate-100 disabled:cursor-not-allowed"
                 />
               </div>
-              <div className="w-16">
+              <div className="flex-1 sm:w-20 sm:flex-none">
                 <label className="block text-xs text-purple-700 mb-1">%</label>
                 <input
                   type="number"
@@ -1401,14 +1416,14 @@ export default function NovaComandaNormalModal({ isOpen, onClose, comanda, modoE
                   onChange={(e) => setServicoComissao(e.target.value)}
                   placeholder="%"
                   disabled={!selectedServicoId}
-                  className="w-full px-2 py-2 rounded-lg border border-purple-200 bg-white text-sm focus:border-purple-400 focus:ring-2 focus:ring-purple-100 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                  className="w-full px-2 py-2.5 rounded-lg border border-purple-200 bg-white text-sm focus:border-purple-400 focus:ring-2 focus:ring-purple-100 disabled:bg-slate-100 disabled:cursor-not-allowed"
                 />
               </div>
               <Button
                 type="button"
                 onClick={addServico}
                 disabled={!canAddServico}
-                className="px-3"
+                className="px-4 py-2.5"
               >
                 <Plus size={16} />
               </Button>
@@ -1418,51 +1433,52 @@ export default function NovaComandaNormalModal({ isOpen, onClose, comanda, modoE
 
         {/* Form Produto expandido */}
         {abaAtiva === 'produto' && (
-          <div className="bg-blue-50 p-4 rounded-xl space-y-3 border border-blue-200">
-            <div className="flex items-end gap-2">
-              {/* Produto com busca */}
-              <div className="flex-1 min-w-0 relative">
-                <label className="block text-xs text-blue-700 mb-1">Produto</label>
-                <div className="relative">
-                  <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-blue-400" />
-                  <input
-                    type="text"
-                    placeholder="Buscar produto..."
-                    value={produtoSearch}
-                    onChange={(e) => {
-                      setProdutoSearch(e.target.value)
-                      setShowProdutoDropdown(true)
-                      if (!e.target.value) {
-                        setSelectedProdutoId('')
-                        setProdutoPreco('')
-                        setProdutoComissao('')
-                      }
-                    }}
-                    onFocus={() => setShowProdutoDropdown(true)}
-                    onBlur={() => setTimeout(() => setShowProdutoDropdown(false), 200)}
-                    className="w-full pl-7 pr-2 py-2 rounded-lg border border-blue-200 bg-white text-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                  />
-                  {selectedProdutoId && <Check size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-green-500" />}
-                </div>
-                {showProdutoDropdown && produtosFiltrados.length > 0 && (
-                  <div className="absolute z-20 w-full mt-1 bg-white border border-blue-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
-                    {produtosFiltrados.map(produto => (
-                      <button
-                        key={produto.id}
-                        type="button"
-                        onClick={() => handleSelectProduto(produto)}
-                        className="w-full px-3 py-2 text-left hover:bg-blue-50 text-sm"
-                      >
-                        <span className="font-medium text-green-600">R$ {Number(produto.preco_venda).toFixed(2)}</span>
-                        <span className="mx-2 text-slate-400">-</span>
-                        <span>{produto.nome}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
+          <div className="bg-blue-50 p-3 sm:p-4 rounded-xl space-y-3 border border-blue-200">
+            {/* Linha 1: Produto */}
+            <div className="relative">
+              <label className="block text-xs text-blue-700 mb-1">Produto</label>
+              <div className="relative">
+                <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-blue-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar produto..."
+                  value={produtoSearch}
+                  onChange={(e) => {
+                    setProdutoSearch(e.target.value)
+                    setShowProdutoDropdown(true)
+                    if (!e.target.value) {
+                      setSelectedProdutoId('')
+                      setProdutoPreco('')
+                      setProdutoComissao('')
+                    }
+                  }}
+                  onFocus={() => setShowProdutoDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowProdutoDropdown(false), 200)}
+                  className="w-full pl-7 pr-8 py-2.5 rounded-lg border border-blue-200 bg-white text-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                />
+                {selectedProdutoId && <Check size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-green-500" />}
               </div>
+              {showProdutoDropdown && produtosFiltrados.length > 0 && (
+                <div className="absolute z-20 w-full mt-1 bg-white border border-blue-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {produtosFiltrados.map(produto => (
+                    <button
+                      key={produto.id}
+                      type="button"
+                      onClick={() => handleSelectProduto(produto)}
+                      className="w-full px-3 py-3 text-left hover:bg-blue-50 text-sm border-b border-blue-100 last:border-0"
+                    >
+                      <span className="font-medium text-green-600">R$ {Number(produto.preco_venda).toFixed(2)}</span>
+                      <span className="mx-2 text-slate-400">-</span>
+                      <span>{produto.nome}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
-              <div className="w-16">
+            {/* Linha 2: Qtd, Preco, % e Botao */}
+            <div className="flex items-end gap-2">
+              <div className="flex-1 sm:w-20 sm:flex-none">
                 <label className="block text-xs text-blue-700 mb-1">Qtd</label>
                 <input
                   type="number"
@@ -1470,10 +1486,10 @@ export default function NovaComandaNormalModal({ isOpen, onClose, comanda, modoE
                   value={produtoQuantidade}
                   onChange={(e) => setProdutoQuantidade(e.target.value)}
                   disabled={!selectedProdutoId}
-                  className="w-full px-2 py-2 rounded-lg border border-blue-200 bg-white text-sm text-center focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                  className="w-full px-2 py-2.5 rounded-lg border border-blue-200 bg-white text-sm text-center focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100 disabled:cursor-not-allowed"
                 />
               </div>
-              <div className="w-24">
+              <div className="flex-1 sm:w-28 sm:flex-none">
                 <label className="block text-xs text-blue-700 mb-1">Preco</label>
                 <input
                   type="number"
@@ -1482,10 +1498,10 @@ export default function NovaComandaNormalModal({ isOpen, onClose, comanda, modoE
                   onChange={(e) => setProdutoPreco(e.target.value)}
                   placeholder="R$"
                   disabled={!selectedProdutoId}
-                  className="w-full px-2 py-2 rounded-lg border border-blue-200 bg-white text-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                  className="w-full px-2 py-2.5 rounded-lg border border-blue-200 bg-white text-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100 disabled:cursor-not-allowed"
                 />
               </div>
-              <div className="w-16">
+              <div className="flex-1 sm:w-20 sm:flex-none">
                 <label className="block text-xs text-blue-700 mb-1">%</label>
                 <input
                   type="number"
@@ -1494,14 +1510,14 @@ export default function NovaComandaNormalModal({ isOpen, onClose, comanda, modoE
                   onChange={(e) => setProdutoComissao(e.target.value)}
                   placeholder="%"
                   disabled={!selectedProdutoId}
-                  className="w-full px-2 py-2 rounded-lg border border-blue-200 bg-white text-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                  className="w-full px-2 py-2.5 rounded-lg border border-blue-200 bg-white text-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100 disabled:cursor-not-allowed"
                 />
               </div>
               <Button
                 type="button"
                 onClick={addProduto}
                 disabled={!canAddProduto}
-                className="px-3"
+                className="px-4 py-2.5"
               >
                 <Plus size={16} />
               </Button>

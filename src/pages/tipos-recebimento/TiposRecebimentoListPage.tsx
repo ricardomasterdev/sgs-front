@@ -21,7 +21,7 @@ type FormData = z.infer<typeof schema>
 
 export default function TiposRecebimentoListPage() {
   const queryClient = useQueryClient()
-  const salao = useAuthStore((state) => state.salao)
+  const { salao, filial } = useAuthStore()
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(20)
   const [search, setSearch] = useState('')
@@ -32,11 +32,12 @@ export default function TiposRecebimentoListPage() {
   const [isPermanentDelete, setIsPermanentDelete] = useState(false)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['tipos-recebimento', salao?.id, page, perPage, statusFilter],
+    queryKey: ['tipos-recebimento', salao?.id, filial?.id, page, perPage, statusFilter],
     queryFn: () => tiposRecebimentoService.list({
       page,
       per_page: perPage,
-      ativo: statusFilter === 'todos' ? undefined : statusFilter === 'ativo'
+      ativo: statusFilter === 'todos' ? undefined : statusFilter === 'ativo',
+      filial_id: filial?.id
     }),
   })
 
@@ -71,7 +72,7 @@ export default function TiposRecebimentoListPage() {
         ? tiposRecebimentoService.update(selectedTipo.id, data)
         : tiposRecebimentoService.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tipos-recebimento', salao?.id] })
+      queryClient.invalidateQueries({ queryKey: ['tipos-recebimento', salao?.id, filial?.id] })
       toast.success(selectedTipo ? 'Forma de pagamento atualizada' : 'Forma de pagamento cadastrada')
       setIsFormOpen(false)
       setSelectedTipo(null)
@@ -83,7 +84,7 @@ export default function TiposRecebimentoListPage() {
     mutationFn: ({ id, permanent }: { id: string; permanent: boolean }) =>
       tiposRecebimentoService.delete(id, permanent),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tipos-recebimento', salao?.id] })
+      queryClient.invalidateQueries({ queryKey: ['tipos-recebimento', salao?.id, filial?.id] })
       toast.success(isPermanentDelete ? 'Forma de pagamento excluida permanentemente' : 'Forma de pagamento desativada')
       setIsDeleteOpen(false)
       setSelectedTipo(null)
@@ -99,7 +100,7 @@ export default function TiposRecebimentoListPage() {
     mutationFn: ({ id, ativo }: { id: string; ativo: boolean }) =>
       tiposRecebimentoService.update(id, { ativo }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tipos-recebimento', salao?.id] })
+      queryClient.invalidateQueries({ queryKey: ['tipos-recebimento', salao?.id, filial?.id] })
       toast.success('Status atualizado')
     },
     onError: () => toast.error('Erro ao atualizar status'),

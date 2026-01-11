@@ -6,6 +6,7 @@ interface ListParams {
   per_page?: number
   search?: string
   ativo?: boolean
+  filial_id?: string
 }
 
 // Tipo flexível para criar/atualizar clientes (aceita genero como string)

@@ -26,7 +26,7 @@ const statusLabels: Record<StatusSessaoWhatsapp, string> = {
 
 export default function WhatsAppListPage() {
   const queryClient = useQueryClient()
-  const { usuario, salao } = useAuthStore()
+  const { usuario, salao, filial } = useAuthStore()
   const isSuper = usuario?.super_usuario
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
@@ -40,7 +40,7 @@ export default function WhatsAppListPage() {
   const [qrPolling, setQrPolling] = useState(false)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['whatsapp-sessoes', salao?.id],
+    queryKey: ['whatsapp-sessoes', salao?.id, filial?.id],
     queryFn: () => whatsappService.list({ per_page: 100 }),
     enabled: !!salao || !!isSuper,
   })
@@ -48,7 +48,7 @@ export default function WhatsAppListPage() {
   const deleteMutation = useMutation({
     mutationFn: whatsappService.delete,
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['whatsapp-sessoes', salao?.id] })
+      queryClient.invalidateQueries({ queryKey: ['whatsapp-sessoes', salao?.id, filial?.id] })
       toast.success(data.message)
       setIsDeleteOpen(false)
       setSelectedSessao(null)
@@ -59,7 +59,7 @@ export default function WhatsAppListPage() {
   const connectMutation = useMutation({
     mutationFn: whatsappService.connect,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['whatsapp-sessoes', salao?.id] })
+      queryClient.invalidateQueries({ queryKey: ['whatsapp-sessoes', salao?.id, filial?.id] })
       toast.success('Conectando...')
     },
     onError: () => toast.error('Erro ao conectar'),
@@ -68,7 +68,7 @@ export default function WhatsAppListPage() {
   const disconnectMutation = useMutation({
     mutationFn: whatsappService.disconnect,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['whatsapp-sessoes', salao?.id] })
+      queryClient.invalidateQueries({ queryKey: ['whatsapp-sessoes', salao?.id, filial?.id] })
       toast.success('Desconectado')
     },
     onError: () => toast.error('Erro ao desconectar'),

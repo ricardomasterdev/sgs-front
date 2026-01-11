@@ -47,16 +47,16 @@ const colorClasses = {
 
 function StatCard({ title, value, icon, color, subtitle, to }: StatCardProps) {
   const content = (
-    <div className="flex items-center gap-4">
-      <div className={cn('w-14 h-14 rounded-2xl flex items-center justify-center text-white', colorClasses[color])}>
+    <div className="flex items-center gap-2 sm:gap-4">
+      <div className={cn('w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center text-white flex-shrink-0 [&>svg]:w-5 [&>svg]:h-5 sm:[&>svg]:w-6 sm:[&>svg]:h-6', colorClasses[color])}>
         {icon}
       </div>
-      <div className="flex-1">
-        <p className="text-sm text-slate-500">{title}</p>
-        <p className="text-2xl font-bold text-slate-900">{value}</p>
-        {subtitle && <p className="text-xs text-slate-400">{subtitle}</p>}
+      <div className="flex-1 min-w-0">
+        <p className="text-xs sm:text-sm text-slate-500 truncate">{title}</p>
+        <p className="text-lg sm:text-2xl font-bold text-slate-900 truncate">{value}</p>
+        {subtitle && <p className="text-xs text-slate-400 truncate">{subtitle}</p>}
       </div>
-      {to && <ArrowRight size={18} className="text-slate-300 group-hover:text-primary-500 transition-colors" />}
+      {to && <ArrowRight size={18} className="text-slate-300 group-hover:text-primary-500 transition-colors hidden sm:block" />}
     </div>
   )
 
@@ -105,9 +105,9 @@ function SalaoDashboard() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6">
         {[...Array(8)].map((_, i) => (
-          <div key={i} className="card h-24 animate-shimmer" />
+          <div key={i} className="card h-20 sm:h-24 animate-shimmer" />
         ))}
       </div>
     )
@@ -123,7 +123,7 @@ function SalaoDashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6">
         <StatCard
           title="Clientes"
           value={stats?.total_clientes || 0}
@@ -155,7 +155,7 @@ function SalaoDashboard() {
       </div>
 
       {/* Financial Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6">
         <StatCard
           title="Comandas Abertas"
           value={stats?.comandas_abertas || 0}
@@ -190,7 +190,7 @@ function SalaoDashboard() {
       </div>
 
       {/* Lists */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
         {/* Comandas Recentes */}
         <div className="card">
           <div className="flex items-center justify-between mb-4">
@@ -218,7 +218,7 @@ function SalaoDashboard() {
                 >
                   <div>
                     <p className="font-bold text-primary-600">{comanda.cliente_nome || 'Cliente nao informado'}</p>
-                    <p className="text-xs text-slate-400">#{comanda.numero}</p>
+                    <p className="text-xs text-slate-400">#{comanda.numero} • {formatters.dateTimeShortBR(comanda.data_abertura)}</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-right">

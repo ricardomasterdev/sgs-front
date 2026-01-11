@@ -90,7 +90,8 @@
       "Bash(taskkill //F //PID 10160)",
       "Bash(taskkill //F //PID 14116)",
       "Bash(taskkill:*)",
-      "Bash(net stop:*)"
+      "Bash(net stop:*)",
+      "Bash(dir /b \"C:\\\\sgs-front\\\\src\\\\pages\")"
     ]
   }
 }

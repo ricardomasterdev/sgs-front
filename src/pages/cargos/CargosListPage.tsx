@@ -10,7 +10,7 @@ import CargoFormModal from '../../components/cargos/CargoFormModal'
 
 export default function CargosListPage() {
   const queryClient = useQueryClient()
-  const salao = useAuthStore((state) => state.salao)
+  const { salao, filial } = useAuthStore()
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(20)
   const [search, setSearch] = useState('')
@@ -20,12 +20,13 @@ export default function CargosListPage() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['cargos', salao?.id, page, perPage, search, statusFilter],
+    queryKey: ['cargos', salao?.id, filial?.id, page, perPage, search, statusFilter],
     queryFn: () => cargosService.list({
       page,
       per_page: perPage,
       search: search || undefined,
-      ativo: statusFilter === 'todos' ? undefined : statusFilter === 'ativo'
+      ativo: statusFilter === 'todos' ? undefined : statusFilter === 'ativo',
+      filial_id: filial?.id
     }),
   })
 
@@ -39,7 +40,7 @@ export default function CargosListPage() {
   const deleteMutation = useMutation({
     mutationFn: cargosService.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cargos', salao?.id] })
+      queryClient.invalidateQueries({ queryKey: ['cargos', salao?.id, filial?.id] })
       toast.success('Cargo desativado')
       setIsDeleteOpen(false)
     },

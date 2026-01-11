@@ -7,6 +7,7 @@ interface ListParams {
   search?: string
   categoria?: string
   ativo?: boolean
+  filial_id?: string
 }
 
 export const produtosService = {

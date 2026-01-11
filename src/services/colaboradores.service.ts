@@ -7,6 +7,7 @@ interface ListParams {
   search?: string
   ativo?: boolean
   cargo_id?: string
+  filial_id?: string
 }
 
 interface CreateColaborador extends Omit<Partial<Colaborador>, 'servicos'> {

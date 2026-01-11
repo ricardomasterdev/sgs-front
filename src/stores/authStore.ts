@@ -12,6 +12,7 @@ interface AuthState {
   refreshToken: string | null
   isAuthenticated: boolean
   isLoading: boolean
+  _hasHydrated: boolean
 }
 
 interface AuthActions {
@@ -29,6 +30,7 @@ interface AuthActions {
   setSaloes: (saloes: SalaoSimples[]) => void
   setFilial: (filial: SalaoSimples | null) => void
   setFiliais: (filiais: SalaoSimples[]) => void
+  setHasHydrated: (state: boolean) => void
 }
 
 export const useAuthStore = create<AuthState & AuthActions>()(
@@ -44,6 +46,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
       refreshToken: null,
       isAuthenticated: false,
       isLoading: false,
+      _hasHydrated: false,
 
       // Actions
       login: (usuario, salao, token, refreshToken) =>
@@ -87,6 +90,8 @@ export const useAuthStore = create<AuthState & AuthActions>()(
       setFilial: (filial) => set({ filial }),
 
       setFiliais: (filiais) => set({ filiais }),
+
+      setHasHydrated: (state) => set({ _hasHydrated: state }),
     }),
     {
       name: 'sgs-auth-storage',
@@ -100,6 +105,9 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
       }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true)
+      },
     }
   )
 )

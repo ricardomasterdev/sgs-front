@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import { Modal, Button } from '../../components/ui'
-import { formatters, masks } from '../../utils/masks'
+import { formatters } from '../../utils/masks'
 import { Printer, X } from 'lucide-react'
 import type { Comanda } from '../../types'
 
@@ -89,7 +89,7 @@ export default function ImprimirComandaModal({ isOpen, onClose, comanda }: Props
             <div className="header" style={{ textAlign: 'center', marginBottom: '10px', borderBottom: '1px dashed #000', paddingBottom: '10px' }}>
               <h1 style={{ fontSize: '16px', fontWeight: 'bold' }}>COMANDA #{comanda.numero}</h1>
               {comanda.data_abertura && (
-                <p style={{ fontSize: '11px' }}>{masks.dateTime(comanda.data_abertura)}</p>
+                <p style={{ fontSize: '11px' }}>{formatters.dateTimeShortBR(comanda.data_abertura)}</p>
               )}
             </div>
 
