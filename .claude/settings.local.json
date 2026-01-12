@@ -92,7 +92,8 @@
       "Bash(taskkill:*)",
       "Bash(net stop:*)",
       "Bash(dir /b \"C:\\\\sgs-front\\\\src\\\\pages\")",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(git push:*)"
     ]
   }
 }

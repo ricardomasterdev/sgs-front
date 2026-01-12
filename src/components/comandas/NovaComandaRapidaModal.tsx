@@ -502,8 +502,9 @@ export default function NovaComandaRapidaModal({ isOpen, onClose }: Props) {
               <CreditCard size={18} className="text-primary-600" />
               Adicionar Pagamento
             </h4>
-            <div className="flex items-end gap-3">
-              <div className="flex-1">
+            {/* Layout responsivo para mobile */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="sm:col-span-1">
                 <label className="block text-xs text-slate-600 mb-1">Forma de Pagamento</label>
                 <select
                   value={selectedTipoRecebimentoId}
@@ -516,35 +517,37 @@ export default function NovaComandaRapidaModal({ isOpen, onClose }: Props) {
                   ))}
                 </select>
               </div>
-              <div className="w-32">
+              <div className="sm:col-span-1">
                 <label className="block text-xs text-slate-600 mb-1">Valor (R$)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={pagamentoValor}
-                  onChange={(e) => setPagamentoValor(e.target.value)}
-                  placeholder="0,00"
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={pagamentoValor}
+                    onChange={(e) => setPagamentoValor(e.target.value)}
+                    placeholder="0,00"
+                    className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
+                  />
+                  {restante > 0 && (
+                    <button
+                      type="button"
+                      onClick={preencherRestante}
+                      className="px-2 py-2 text-xs text-primary-600 hover:text-primary-800 underline whitespace-nowrap"
+                    >
+                      Total
+                    </button>
+                  )}
+                </div>
               </div>
-              {restante > 0 && (
-                <button
-                  type="button"
-                  onClick={preencherRestante}
-                  className="px-2 py-2 text-xs text-primary-600 hover:text-primary-800 underline whitespace-nowrap"
-                >
-                  Total
-                </button>
-              )}
-              <Button
-                type="button"
-                onClick={addPagamento}
-                disabled={!canAddPagamento}
-                className="px-4"
-              >
-                <Plus size={16} />
-              </Button>
             </div>
+            <Button
+              type="button"
+              onClick={addPagamento}
+              disabled={!canAddPagamento}
+              className="w-full sm:w-auto px-4"
+            >
+              <Plus size={16} /> Incluir Pagamento
+            </Button>
           </div>
 
           {/* Lista de Pagamentos */}

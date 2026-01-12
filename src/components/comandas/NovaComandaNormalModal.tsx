@@ -989,8 +989,9 @@ export default function NovaComandaNormalModal({ isOpen, onClose, comanda, modoE
                 <CreditCard size={16} /> Adicionar Pagamento para Fechar
               </h4>
 
-              <div className="flex items-end gap-3">
-                <div className="flex-1">
+              {/* Layout responsivo para mobile */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="sm:col-span-1">
                   <label className="block text-xs text-green-700 mb-1">Forma de Pagamento</label>
                   <select
                     value={selectedTipoRecebimentoId}
@@ -1003,35 +1004,37 @@ export default function NovaComandaNormalModal({ isOpen, onClose, comanda, modoE
                     ))}
                   </select>
                 </div>
-                <div className="w-32">
+                <div className="sm:col-span-1">
                   <label className="block text-xs text-green-700 mb-1">Valor (R$)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={pagamentoValor}
-                    onChange={(e) => setPagamentoValor(e.target.value)}
-                    placeholder="0,00"
-                    className="w-full px-3 py-2 rounded-lg border border-green-200 bg-white text-sm focus:border-green-400 focus:ring-2 focus:ring-green-100"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={pagamentoValor}
+                      onChange={(e) => setPagamentoValor(e.target.value)}
+                      placeholder="0,00"
+                      className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-green-200 bg-white text-sm focus:border-green-400 focus:ring-2 focus:ring-green-100"
+                    />
+                    {restanteContinuar > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setPagamentoValor(restanteContinuar.toFixed(2))}
+                        className="px-2 py-2 text-xs text-green-600 hover:text-green-800 underline whitespace-nowrap"
+                      >
+                        Restante
+                      </button>
+                    )}
+                  </div>
                 </div>
-                {restanteContinuar > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setPagamentoValor(restanteContinuar.toFixed(2))}
-                    className="px-2 py-2 text-xs text-green-600 hover:text-green-800 underline whitespace-nowrap"
-                  >
-                    Preencher restante
-                  </button>
-                )}
-                <Button
-                  type="button"
-                  onClick={addPagamento}
-                  disabled={!canAddPagamento}
-                  className="px-4 bg-green-600 hover:bg-green-700"
-                >
-                  <Plus size={16} /> Incluir
-                </Button>
               </div>
+              <Button
+                type="button"
+                onClick={addPagamento}
+                disabled={!canAddPagamento}
+                className="w-full sm:w-auto px-4 bg-green-600 hover:bg-green-700"
+              >
+                <Plus size={16} /> Incluir Pagamento
+              </Button>
 
               {/* Lista de pagamentos adicionados */}
               {pagamentos.length > 0 && (
