@@ -40,6 +40,7 @@ export default function MinhasComandasPage() {
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
   const [clienteSelecionado, setClienteSelecionado] = useState<{id: string, nome: string} | null>(null)
+  const [comandaIdContinuar, setComandaIdContinuar] = useState<string | null>(null)
 
   // Obter data de hoje no fuso horario do Brasil
   const getHojeBrasil = () => {
@@ -134,6 +135,13 @@ export default function MinhasComandasPage() {
     }
   }, [comandas, usuario?.colaborador_id])
 
+  // Funcao para pegar a data mais recente de uma comanda (updated_at ou created_at)
+  const getDataMaisRecente = (c: Comanda): number => {
+    const updated = c.updated_at ? new Date(c.updated_at).getTime() : 0
+    const created = new Date(c.created_at).getTime()
+    return updated > created ? updated : created
+  }
+
   // Ultimos servicos do colaborador (dados ja sao de hoje)
   const ultimosServicos = useMemo(() => {
     const colabId = String(usuario?.colaborador_id || '')
@@ -146,21 +154,24 @@ export default function MinhasComandasPage() {
         ...item,
         comanda_numero: c.numero,
         cliente_nome: c.cliente?.nome || c.nome_cliente || 'Cliente nao informado',
-        data: c.data_abertura || c.created_at
+        data: c.updated_at || c.created_at, // Para exibicao
+        dataOrdenacao: getDataMaisRecente(c) // Para ordenacao
       })))
       .filter(item => item.tipo === 'servico' && String(item.colaborador_id) === colabId)
-      .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
+      .sort((a, b) => b.dataOrdenacao - a.dataOrdenacao)
       .slice(0, 5)
     return servicos
   }, [comandas, usuario?.colaborador_id])
 
-  // Separar minhas comandas em abertas e fechadas (max 10 cada)
+  // Separar minhas comandas em abertas e fechadas (max 10 cada), ordenadas pela mais recente
   const { minhasComandasAbertas, minhasComandasFechadas } = useMemo(() => {
     const abertas = comandas
       .filter(c => c.status === 'aberta' || c.status === 'em_atendimento')
+      .sort((a, b) => getDataMaisRecente(b) - getDataMaisRecente(a))
       .slice(0, 10)
     const fechadas = comandas
       .filter(c => c.status !== 'aberta' && c.status !== 'em_atendimento')
+      .sort((a, b) => getDataMaisRecente(b) - getDataMaisRecente(a))
       .slice(0, 10)
     return { minhasComandasAbertas: abertas, minhasComandasFechadas: fechadas }
   }, [comandas])
@@ -172,26 +183,36 @@ export default function MinhasComandasPage() {
     }).format(value)
   }
 
+  // Calcula o total da comanda a partir dos itens (fallback se total estiver 0)
+  const getComandaTotal = (comanda: Comanda) => {
+    const totalItens = comanda.itens?.reduce((sum, item) => sum + Number(item.valor_total || 0), 0) || 0
+    return totalItens > 0 ? totalItens : Number(comanda.total || 0)
+  }
+
   const handleComandaCriada = () => {
     setModalOpen(false)
     setClienteSelecionado(null)
+    setComandaIdContinuar(null)
     loadComandas()
   }
 
   const handleContinuarComanda = (comanda: Comanda) => {
+    // Sempre passa o ID da comanda para carregar os itens corretamente
+    setComandaIdContinuar(comanda.id)
     if (comanda.cliente_id) {
       setClienteSelecionado({
         id: comanda.cliente_id,
         nome: comanda.cliente?.nome || comanda.nome_cliente || 'Cliente'
       })
-    } else if (comanda.nome_cliente) {
-      setClienteSelecionado(null) // Sem ID, mas tem nome
+    } else {
+      setClienteSelecionado(null)
     }
     setModalOpen(true)
   }
 
   const handleNovaComanda = () => {
     setClienteSelecionado(null)
+    setComandaIdContinuar(null)
     setModalOpen(true)
   }
 
@@ -284,7 +305,7 @@ export default function MinhasComandasPage() {
                 <div>
                   <p className="font-medium text-slate-900">{servico.descricao}</p>
                   <p className="text-sm text-slate-500">
-                    {servico.cliente_nome} - Comanda #{servico.comanda_numero}
+                    <span className="font-bold text-pink-600">{servico.cliente_nome}</span> - Comanda #{servico.comanda_numero}
                   </p>
                 </div>
                 <div className="text-right">
@@ -315,19 +336,19 @@ export default function MinhasComandasPage() {
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-slate-900">#{comanda.numero}</span>
+                    <p className="font-bold text-slate-900">
+                      {comanda.cliente?.nome || comanda.nome_cliente || 'Cliente nao informado'}
+                    </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-sm text-slate-500">#{comanda.numero}</span>
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[comanda.status]}`}>
                         {statusLabels[comanda.status]}
                       </span>
                     </div>
-                    <p className="text-sm text-slate-600 mt-0.5">
-                      {comanda.cliente?.nome || comanda.nome_cliente || 'Cliente nao informado'}
-                    </p>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-right">
-                      <p className="font-semibold text-slate-900">{formatCurrency(comanda.total)}</p>
+                      <p className="font-semibold text-slate-900">{formatCurrency(getComandaTotal(comanda))}</p>
                       <p className="text-xs text-slate-400">
                         {formatters.timeBR(comanda.data_abertura || comanda.created_at)}
                       </p>
@@ -384,22 +405,22 @@ export default function MinhasComandasPage() {
               <div key={comanda.id} className="p-4 hover:bg-slate-50 transition-colors">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-slate-900">#{comanda.numero}</span>
+                    <p className="font-bold text-slate-900">
+                      {comanda.cliente?.nome || comanda.nome_cliente || 'Cliente nao informado'}
+                    </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-sm text-slate-500">#{comanda.numero}</span>
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[comanda.status]}`}>
                         {statusLabels[comanda.status]}
                       </span>
                     </div>
-                    <p className="text-sm text-slate-500 mt-1">
-                      {comanda.cliente?.nome || comanda.nome_cliente || 'Cliente nao informado'}
-                    </p>
                     <p className="text-xs text-slate-400 mt-0.5">
                       {comanda.itens?.length || 0} itens
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-right">
-                      <p className="font-semibold text-slate-900">{formatCurrency(comanda.total)}</p>
+                      <p className="font-semibold text-slate-900">{formatCurrency(getComandaTotal(comanda))}</p>
                       <p className="text-xs text-slate-400">
                         {formatters.dateTimeShortBR(comanda.data_abertura || comanda.created_at)}
                       </p>
@@ -443,21 +464,21 @@ export default function MinhasComandasPage() {
               <div key={comanda.id} className="p-4 hover:bg-slate-50 transition-colors">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-slate-900">#{comanda.numero}</span>
+                    <p className="font-bold text-slate-900">
+                      {comanda.cliente?.nome || comanda.nome_cliente || 'Cliente nao informado'}
+                    </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-sm text-slate-500">#{comanda.numero}</span>
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[comanda.status]}`}>
                         {statusLabels[comanda.status]}
                       </span>
                     </div>
-                    <p className="text-sm text-slate-500 mt-1">
-                      {comanda.cliente?.nome || comanda.nome_cliente || 'Cliente nao informado'}
-                    </p>
                     <p className="text-xs text-slate-400 mt-0.5">
                       {comanda.itens?.length || 0} itens
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-slate-900">{formatCurrency(comanda.total)}</p>
+                    <p className="font-semibold text-slate-900">{formatCurrency(getComandaTotal(comanda))}</p>
                     <p className="text-xs text-slate-400">
                       {formatters.dateTimeShortBR(comanda.data_abertura || comanda.created_at)}
                     </p>
@@ -476,9 +497,11 @@ export default function MinhasComandasPage() {
           onClose={() => {
             setModalOpen(false)
             setClienteSelecionado(null)
+            setComandaIdContinuar(null)
           }}
           onSuccess={handleComandaCriada}
           clienteInicial={clienteSelecionado}
+          comandaId={comandaIdContinuar}
         />
       )}
 

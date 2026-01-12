@@ -9,7 +9,7 @@ import { Modal, Button } from '../../components/ui'
 import { useAuthStore } from '../../stores/authStore'
 import { formatters, masks, getDataHoraBrasilISO } from '../../utils/masks'
 import toast from 'react-hot-toast'
-import { Search, User, Scissors, Package, Plus, Minus, X, Check, UserPlus, Phone, Calendar, UserCircle, Receipt, AlertTriangle } from 'lucide-react'
+import { Search, User, Scissors, Package, Plus, Minus, X, Check, UserPlus, Calendar, UserCircle, Receipt, AlertTriangle } from 'lucide-react'
 import type { Servico, Produto, Comanda } from '../../types'
 
 interface Props {
@@ -17,6 +17,7 @@ interface Props {
   onClose: () => void
   onSuccess?: () => void
   clienteInicial?: { id: string; nome: string } | null
+  comandaId?: string | null  // ID da comanda para continuar
 }
 
 interface ItemComanda {
@@ -32,7 +33,7 @@ interface ItemComanda {
   comissao_percentual: number
 }
 
-export default function ComandaColaboradorModal({ isOpen, onClose, onSuccess, clienteInicial }: Props) {
+export default function ComandaColaboradorModal({ isOpen, onClose, onSuccess, clienteInicial, comandaId }: Props) {
   const queryClient = useQueryClient()
   const { usuario } = useAuthStore()
   const dateInputRef = useRef<HTMLInputElement>(null)
@@ -44,7 +45,8 @@ export default function ComandaColaboradorModal({ isOpen, onClose, onSuccess, cl
   const [showClienteDropdown, setShowClienteDropdown] = useState(false)
   const [showNovoCliente, setShowNovoCliente] = useState(false)
   const [novoClienteNome, setNovoClienteNome] = useState('')
-  const [novoClienteCelular, setNovoClienteCelular] = useState('')
+  const [novoClienteWhatsapp, setNovoClienteWhatsapp] = useState('')
+  const [novoClienteGenero, setNovoClienteGenero] = useState<string>('')
   const [comandaAbertaCliente, setComandaAbertaCliente] = useState<Comanda | null>(null)
   const [dataComanda, setDataComanda] = useState<string>(() => {
     const hoje = new Date()
@@ -81,6 +83,14 @@ export default function ComandaColaboradorModal({ isOpen, onClose, onSuccess, cl
     enabled: clienteSearch.length >= 2 && showClienteDropdown,
   })
 
+  // Buscar comanda por ID quando fornecido (para continuar comanda existente)
+  const { data: comandaPorId, refetch: refetchComanda } = useQuery({
+    queryKey: ['comanda-por-id', comandaId],
+    queryFn: () => comandasService.get(comandaId!),
+    enabled: !!comandaId && isOpen,
+    staleTime: 0, // Sempre buscar dados frescos
+  })
+
   // Verificar comandas abertas do cliente selecionado
   const { data: comandasClienteData } = useQuery({
     queryKey: ['comandas-cliente-aberta', clienteId],
@@ -88,7 +98,7 @@ export default function ComandaColaboradorModal({ isOpen, onClose, onSuccess, cl
       cliente_id: clienteId!,
       per_page: 5
     }),
-    enabled: !!clienteId && isOpen,
+    enabled: !!clienteId && isOpen && !comandaId, // Nao buscar se ja tem comandaId
   })
 
   // Buscar comandas abertas para mostrar na lista de busca
@@ -142,15 +152,20 @@ export default function ComandaColaboradorModal({ isOpen, onClose, onSuccess, cl
         setClienteSearch(clienteInicial.nome)
         setClienteId(clienteInicial.id)
         setClienteNome(clienteInicial.nome)
-      } else {
+      } else if (!comandaId) {
+        // Só limpa cliente se NÃO estiver continuando uma comanda por ID
         setClienteSearch('')
         setClienteId(null)
         setClienteNome('')
       }
       setShowNovoCliente(false)
       setNovoClienteNome('')
-      setNovoClienteCelular('')
-      setComandaAbertaCliente(null)
+      setNovoClienteWhatsapp('')
+      setNovoClienteGenero('')
+      // Só limpa comanda aberta se NÃO estiver continuando uma comanda por ID
+      if (!comandaId) {
+        setComandaAbertaCliente(null)
+      }
       const hoje = new Date()
       const dia = String(hoje.getDate()).padStart(2, '0')
       const mes = String(hoje.getMonth() + 1).padStart(2, '0')
@@ -161,20 +176,54 @@ export default function ComandaColaboradorModal({ isOpen, onClose, onSuccess, cl
       resetServicoForm()
       resetProdutoForm()
     }
-  }, [isOpen, clienteInicial])
+  }, [isOpen, clienteInicial, comandaId])
 
-  // Verificar se cliente tem comanda aberta
+  // Forcar busca da comanda quando modal abre com comandaId
   useEffect(() => {
-    if (comandasClienteData?.items) {
-      const comandasAbertas = comandasClienteData.items.filter(
-        (c: Comanda) => c.status === 'aberta' || c.status === 'em_atendimento'
-      )
-      if (comandasAbertas.length > 0) {
-        setComandaAbertaCliente(comandasAbertas[0])
-      } else {
-        setComandaAbertaCliente(null)
+    if (comandaId && isOpen) {
+      refetchComanda()
+    }
+  }, [comandaId, isOpen, refetchComanda])
+
+  // Quando temos comandaPorId, usar ela diretamente e preencher cliente
+  useEffect(() => {
+    if (comandaPorId && isOpen) {
+      console.log('Comanda carregada por ID:', comandaPorId)
+      setComandaAbertaCliente(comandaPorId)
+      // Preencher dados do cliente se existir
+      if (comandaPorId.cliente_id) {
+        setClienteId(comandaPorId.cliente_id)
+        setClienteNome(comandaPorId.cliente?.nome || comandaPorId.nome_cliente || '')
+        setClienteSearch(comandaPorId.cliente?.nome || comandaPorId.nome_cliente || '')
+      } else if (comandaPorId.nome_cliente) {
+        setClienteNome(comandaPorId.nome_cliente)
+        setClienteSearch(comandaPorId.nome_cliente)
       }
     }
+  }, [comandaPorId, isOpen])
+
+  // Verificar se cliente tem comanda aberta e buscar detalhes completos
+  useEffect(() => {
+    const buscarComandaCompleta = async () => {
+      if (comandasClienteData?.items) {
+        const comandasAbertas = comandasClienteData.items.filter(
+          (c: Comanda) => c.status === 'aberta' || c.status === 'em_atendimento'
+        )
+        if (comandasAbertas.length > 0) {
+          // Buscar comanda completa com itens
+          try {
+            const comandaCompleta = await comandasService.get(comandasAbertas[0].id)
+            setComandaAbertaCliente(comandaCompleta)
+          } catch (error) {
+            console.error('Erro ao buscar comanda completa:', error)
+            setComandaAbertaCliente(comandasAbertas[0])
+          }
+        } else {
+          setComandaAbertaCliente(null)
+        }
+      }
+    }
+    buscarComandaCompleta()
   }, [comandasClienteData])
 
   // Carregar servicos do colaborador quando dados estiverem disponiveis
@@ -237,7 +286,8 @@ export default function ComandaColaboradorModal({ isOpen, onClose, onSuccess, cl
   const createClienteMutation = useMutation({
     mutationFn: () => clientesService.create({
       nome: novoClienteNome,
-      celular: novoClienteCelular || undefined,
+      whatsapp: novoClienteWhatsapp,
+      genero: novoClienteGenero,
     }),
     onSuccess: (cliente) => {
       setClienteId(cliente.id)
@@ -245,7 +295,8 @@ export default function ComandaColaboradorModal({ isOpen, onClose, onSuccess, cl
       setClienteSearch(cliente.nome)
       setShowNovoCliente(false)
       setNovoClienteNome('')
-      setNovoClienteCelular('')
+      setNovoClienteWhatsapp('')
+      setNovoClienteGenero('')
       toast.success('Cliente cadastrado!')
     },
     onError: () => toast.error('Erro ao cadastrar cliente'),
@@ -310,6 +361,7 @@ export default function ComandaColaboradorModal({ isOpen, onClose, onSuccess, cl
     },
     onSuccess: (_, __, ___) => {
       queryClient.invalidateQueries({ queryKey: ['comandas'] })
+      queryClient.invalidateQueries({ queryKey: ['comanda-por-id'] })
       if (comandaAbertaCliente) {
         toast.success(`Itens adicionados na comanda #${comandaAbertaCliente.numero}!`)
       } else {
@@ -327,8 +379,18 @@ export default function ComandaColaboradorModal({ isOpen, onClose, onSuccess, cl
       if (!comandaAbertaCliente) throw new Error('Comanda nao encontrada')
       return comandasService.removeItem(comandaAbertaCliente.id, itemId)
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['comandas-cliente-aberta', clienteId] })
+    onSuccess: async () => {
+      // Buscar comanda completa atualizada
+      if (comandaAbertaCliente) {
+        try {
+          const comandaAtualizada = await comandasService.get(comandaAbertaCliente.id)
+          setComandaAbertaCliente(comandaAtualizada)
+        } catch (error) {
+          console.error('Erro ao atualizar comanda:', error)
+        }
+      }
+      queryClient.invalidateQueries({ queryKey: ['comandas'] })
+      queryClient.invalidateQueries({ queryKey: ['comanda-por-id'] })
       toast.success('Item removido!')
     },
     onError: () => toast.error('Erro ao remover item'),
@@ -380,6 +442,8 @@ export default function ComandaColaboradorModal({ isOpen, onClose, onSuccess, cl
       id: `${Date.now()}-${produto.id}`,
       tipo: 'produto',
       produto_id: produto.id,
+      colaborador_id: usuario?.colaborador_id || undefined,
+      colaborador_nome: usuario?.colaborador_nome || usuario?.nome,
       descricao: produto.nome,
       preco: parseFloat(produtoPreco) || 0,
       quantidade: parseInt(produtoQuantidade) || 1,
@@ -429,7 +493,8 @@ export default function ComandaColaboradorModal({ isOpen, onClose, onSuccess, cl
     p.nome.toLowerCase().includes(produtoSearch.toLowerCase())
   ) || []
 
-  const canSubmit = itensComanda.length > 0
+  // Colaborador precisa selecionar cliente para criar comanda
+  const canSubmit = itensComanda.length > 0 && !!clienteId
   const canAddServico = selectedServicoId && servicoPreco
   const canAddProduto = selectedProdutoId && produtoPreco
 
@@ -494,12 +559,9 @@ export default function ComandaColaboradorModal({ isOpen, onClose, onSuccess, cl
                       >
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <span className="font-medium text-slate-700 truncate">{cliente.nome}</span>
-                            {cliente.celular && (
-                              <span className="text-slate-500 flex items-center gap-1 flex-shrink-0">
-                                <Phone size={12} /> {cliente.celular}
-                              </span>
-                            )}
+                            <span className="font-medium text-slate-700 truncate">
+                              {cliente.nome}{cliente.celular ? ` - ${masks.phone(cliente.celular)}` : ''}
+                            </span>
                           </div>
                           {comandaAberta && (
                             <div className="flex items-center gap-1 text-amber-600 bg-amber-100 px-2 py-0.5 rounded text-xs font-medium flex-shrink-0">
@@ -526,21 +588,31 @@ export default function ComandaColaboradorModal({ isOpen, onClose, onSuccess, cl
               <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="Celular (opcional)"
-                  value={novoClienteCelular}
-                  onChange={(e) => setNovoClienteCelular(e.target.value)}
+                  placeholder="WhatsApp *"
+                  value={novoClienteWhatsapp}
+                  onChange={(e) => setNovoClienteWhatsapp(e.target.value)}
                   className="flex-1 px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm focus:border-teal-400 focus:ring-2 focus:ring-teal-100"
                 />
-                <Button
-                  type="button"
-                  onClick={() => createClienteMutation.mutate()}
-                  disabled={!novoClienteNome.trim()}
-                  loading={createClienteMutation.isPending}
-                  className="px-4 bg-teal-600 hover:bg-teal-700"
+                <select
+                  value={novoClienteGenero}
+                  onChange={(e) => setNovoClienteGenero(e.target.value)}
+                  className="flex-1 px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm focus:border-teal-400 focus:ring-2 focus:ring-teal-100"
                 >
-                  Cadastrar
-                </Button>
+                  <option value="">Genero *</option>
+                  <option value="feminino">Feminino</option>
+                  <option value="masculino">Masculino</option>
+                  <option value="outro">Outro</option>
+                </select>
               </div>
+              <Button
+                type="button"
+                onClick={() => createClienteMutation.mutate()}
+                disabled={!novoClienteNome.trim() || !novoClienteWhatsapp.trim() || !novoClienteGenero}
+                loading={createClienteMutation.isPending}
+                className="w-full bg-teal-600 hover:bg-teal-700"
+              >
+                Cadastrar Cliente
+              </Button>
             </div>
           )}
         </div>
@@ -563,47 +635,96 @@ export default function ComandaColaboradorModal({ isOpen, onClose, onSuccess, cl
 
             {/* Itens existentes na comanda */}
             {comandaAbertaCliente.itens && comandaAbertaCliente.itens.length > 0 && (
-              <div className="border-t border-blue-200 pt-3">
-                <p className="text-xs font-medium text-blue-700 mb-2">Itens ja inclusos:</p>
-                <div className="space-y-2 max-h-32 overflow-y-auto">
-                  {comandaAbertaCliente.itens.map((item) => {
-                    const isMeuItem = item.colaborador_id === usuario?.colaborador_id
-                    return (
-                      <div key={item.id} className={`flex items-center justify-between p-2 rounded-lg text-sm ${isMeuItem ? 'bg-blue-100' : 'bg-white'}`}>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            {item.tipo === 'servico' ? (
-                              <Scissors size={12} className="text-teal-500" />
-                            ) : (
-                              <Package size={12} className="text-blue-500" />
-                            )}
-                            <span className="font-medium text-slate-700 truncate">{item.descricao}</span>
+              <div className="border-t border-blue-200 pt-3 space-y-3">
+                {/* Servicos */}
+                {comandaAbertaCliente.itens.filter(i => i.tipo === 'servico').length > 0 && (
+                  <div className="border border-teal-200 rounded-lg overflow-hidden">
+                    <div className="bg-teal-50 px-3 py-1.5 border-b border-teal-200 flex items-center gap-2">
+                      <Scissors size={14} className="text-teal-600" />
+                      <span className="text-xs font-medium text-teal-700">
+                        Servicos ({comandaAbertaCliente.itens.filter(i => i.tipo === 'servico').length})
+                      </span>
+                    </div>
+                    <div className="divide-y divide-teal-100 max-h-28 overflow-y-auto bg-white">
+                      {comandaAbertaCliente.itens.filter(i => i.tipo === 'servico').map((item) => {
+                        const isMeuItem = String(item.colaborador_id) === String(usuario?.colaborador_id)
+                        return (
+                          <div key={item.id} className={`flex items-center justify-between px-3 py-2 text-sm ${isMeuItem ? 'bg-teal-50' : ''}`}>
+                            <div className="flex-1 min-w-0">
+                              <span className="font-medium text-slate-700 truncate block">{item.descricao}</span>
+                              <span className="text-xs text-slate-500">
+                                {item.colaborador_nome || 'Colaborador'} • {item.quantidade}x {formatters.currency(item.valor_unitario)}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-teal-700">{formatters.currency(item.valor_total)}</span>
+                              {isMeuItem && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeItemMutation.mutate(item.id)}
+                                  disabled={removeItemMutation.isPending}
+                                  className="p-1 rounded hover:bg-red-100 text-red-400 hover:text-red-600"
+                                  title="Remover item"
+                                >
+                                  <X size={14} />
+                                </button>
+                              )}
+                            </div>
                           </div>
-                          <div className="text-xs text-slate-500 mt-0.5">
-                            {item.colaborador_nome || 'Colaborador'} • {item.quantidade}x {formatters.currency(item.valor_unitario)}
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Produtos */}
+                {comandaAbertaCliente.itens.filter(i => i.tipo === 'produto').length > 0 && (
+                  <div className="border border-blue-200 rounded-lg overflow-hidden">
+                    <div className="bg-blue-50 px-3 py-1.5 border-b border-blue-200 flex items-center gap-2">
+                      <Package size={14} className="text-blue-600" />
+                      <span className="text-xs font-medium text-blue-700">
+                        Produtos ({comandaAbertaCliente.itens.filter(i => i.tipo === 'produto').length})
+                      </span>
+                    </div>
+                    <div className="divide-y divide-blue-100 max-h-28 overflow-y-auto bg-white">
+                      {comandaAbertaCliente.itens.filter(i => i.tipo === 'produto').map((item) => {
+                        const isMeuItem = String(item.colaborador_id) === String(usuario?.colaborador_id)
+                        return (
+                          <div key={item.id} className={`flex items-center justify-between px-3 py-2 text-sm ${isMeuItem ? 'bg-blue-50' : ''}`}>
+                            <div className="flex-1 min-w-0">
+                              <span className="font-medium text-slate-700 truncate block">{item.descricao}</span>
+                              <span className="text-xs text-slate-500">
+                                {item.colaborador_nome || 'Colaborador'} • {item.quantidade}x {formatters.currency(item.valor_unitario)}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-blue-700">{formatters.currency(item.valor_total)}</span>
+                              {isMeuItem && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeItemMutation.mutate(item.id)}
+                                  disabled={removeItemMutation.isPending}
+                                  className="p-1 rounded hover:bg-red-100 text-red-400 hover:text-red-600"
+                                  title="Remover item"
+                                >
+                                  <X size={14} />
+                                </button>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-slate-700">{formatters.currency(item.valor_total)}</span>
-                          {isMeuItem && (
-                            <button
-                              type="button"
-                              onClick={() => removeItemMutation.mutate(item.id)}
-                              disabled={removeItemMutation.isPending}
-                              className="p-1 rounded hover:bg-red-100 text-red-400 hover:text-red-600"
-                              title="Remover item"
-                            >
-                              <X size={14} />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-                <div className="flex justify-between items-center mt-2 pt-2 border-t border-blue-200">
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center pt-2 border-t border-blue-200">
                   <span className="text-xs text-blue-700">Total da comanda:</span>
-                  <span className="font-semibold text-blue-800">{formatters.currency(comandaAbertaCliente.total)}</span>
+                  <span className="font-semibold text-blue-800">
+                    {formatters.currency(
+                      comandaAbertaCliente.itens?.reduce((sum, item) => sum + Number(item.valor_total || 0), 0) || comandaAbertaCliente.total || 0
+                    )}
+                  </span>
                 </div>
               </div>
             )}
@@ -960,17 +1081,32 @@ export default function ComandaColaboradorModal({ isOpen, onClose, onSuccess, cl
 
         {/* Botoes */}
         <div className="flex gap-3 pt-2">
-          <Button type="button" variant="secondary" onClick={onClose} className="flex-1">
-            Cancelar
-          </Button>
-          <Button
-            onClick={() => createMutation.mutate()}
-            loading={createMutation.isPending}
-            disabled={!canSubmit}
-            className="flex-1 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600"
-          >
-            {comandaAbertaCliente ? 'Adicionar Itens' : 'Criar Comanda'}
-          </Button>
+          {comandaAbertaCliente && itensComanda.length === 0 ? (
+            <Button
+              type="button"
+              onClick={() => {
+                onSuccess?.()
+                onClose()
+              }}
+              className="flex-1 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600"
+            >
+              Fechar
+            </Button>
+          ) : (
+            <>
+              <Button type="button" variant="secondary" onClick={onClose} className="flex-1">
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => createMutation.mutate()}
+                loading={createMutation.isPending}
+                disabled={!canSubmit}
+                className="flex-1 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600"
+              >
+                {comandaAbertaCliente ? 'Adicionar Itens' : 'Criar Comanda'}
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </Modal>
